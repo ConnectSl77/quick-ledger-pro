@@ -174,3 +174,42 @@ export async function getSupplierPayments(supplierId: string, paymentType?: stri
 
   return data || [];
 }
+
+// New functions for messages
+export async function createMessage(senderId: string, receiverId: string, content: string) {
+  const { error } = await supabase.from('messages').insert({
+    sender_id: senderId,
+    receiver_id: receiverId,
+    content,
+  });
+
+  if (error) {
+    throw new Error('Failed to send message');
+  }
+}
+
+export async function getConversations(userId: string) {
+  const { data, error } = await supabase
+    .rpc('get_conversations', { user_id: userId });
+
+  if (error) {
+    throw new Error('Failed to fetch conversations');
+  }
+
+  return data || [];
+}
+
+export async function getMessages(userId: string, otherUserId: string) {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+    .or(`sender_id.eq.${otherUserId},receiver_id.eq.${otherUserId}`)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error('Failed to fetch messages');
+  }
+
+  return data || [];
+}
