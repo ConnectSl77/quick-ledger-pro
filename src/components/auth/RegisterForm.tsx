@@ -100,7 +100,7 @@ const RegisterForm = () => {
       <div className="space-y-6">
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">Create an Account</h1>
-          <p className="text-muted-foreground">Register to use Quick Ledger Pro</p>
+          <p className="text-muted-foreground">Register to use Mi-Boks</p>
           
           <div className="flex items-center justify-center gap-1 pt-2">
             <div className={`h-2 w-8 rounded-full ${step === 1 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>

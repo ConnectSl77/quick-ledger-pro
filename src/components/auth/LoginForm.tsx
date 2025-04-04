@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -67,7 +66,7 @@ const LoginForm = () => {
       <div className="space-y-6">
         <div className="space-y-2 text-center">
           <h1 className="text-3xl font-bold">Sign In</h1>
-          <p className="text-muted-foreground">Enter your credentials to access your account</p>
+          <p className="text-muted-foreground">Enter your credentials to access your Mi-Boks account</p>
         </div>
 
         <Tabs defaultValue="email" className="w-full">
