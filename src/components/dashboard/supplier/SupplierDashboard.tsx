@@ -84,13 +84,8 @@ const SupplierDashboard = () => {
       color: 'blue',
     },
     { 
-<<<<<<< HEAD
       title: 'Vendors', 
       value: stats.recentOrders.length.toString(), 
-=======
-      title: 'Customers', 
-      value: (customerData?.length || 0).toString(), 
->>>>>>> 1ff5c04f743c5bfe28dba5e5e584652c5b0c4729
       change: '+8%', 
       icon: Users,
       description: 'Active vendors',
@@ -243,13 +238,8 @@ const SupplierDashboard = () => {
                       key={order.id} 
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
-<<<<<<< HEAD
                       <td className="p-4">{order.vendor_name}</td>
                       <td className="p-4 font-medium">SLL {order.amount.toLocaleString()}</td>
-=======
-                      <td className="p-4">{order.customer_name}</td>
-                      <td className="p-4 font-medium">SLL {Number(order.amount).toLocaleString()}</td>
->>>>>>> 1ff5c04f743c5bfe28dba5e5e584652c5b0c4729
                       <td className="p-4 text-muted-foreground">
                         {new Date(order.created_at).toLocaleDateString()}
                       </td>
