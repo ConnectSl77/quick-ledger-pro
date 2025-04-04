@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
@@ -16,9 +15,9 @@ const Hero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6 hero-text-gradient">
-              Quick Ledger Pro
-            </h1>
+            <div className="flex justify-center mb-6">
+              <div className="w-64 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+            </div>
             <p className="mt-6 text-lg leading-8 text-gray-600 animate-fade-in">
               The complete business management solution for vendors and suppliers. 
               Manage invoices, inventory, sales, and suppliers in one powerful platform.

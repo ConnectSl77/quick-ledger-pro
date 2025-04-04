@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
 import { 
@@ -72,7 +71,7 @@ const Features = () => {
             Powerful Business Management Features
           </p>
           <p className="mt-6 text-lg leading-8 text-gray-600">
-            Quick Ledger Pro provides all the tools you need to manage your business efficiently, 
+            <span className="inline-block w-32 h-4 bg-gray-200 rounded animate-pulse"></span> provides all the tools you need to manage your business efficiently, 
             whether you're a vendor or supplier.
           </p>
         </div>
