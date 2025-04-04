@@ -1,459 +1,336 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { toast } from 'sonner';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Building, Mail, Phone, MapPin, User, Lock, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { createClient } from '@supabase/supabase-js';
 
-const registerSchema = z.object({
-  userType: z.enum(['vendor', 'supplier']),
-  fullName: z.string().min(2, 'Full name is required'),
-  businessName: z.string().min(2, 'Business name is required'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
-  address: z.string().min(5, 'Address is required'),
-  city: z.string().min(2, 'City is required'),
-  state: z.string().min(2, 'State is required'),
-  zipCode: z.string().min(4, 'Zip code is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  confirmPassword: z.string().min(8, 'Confirm your password'),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+interface FormData {
+  email: string;
+  password: string;
+  confirmPassword: string;
+  userType: 'vendor' | 'supplier';
+  fullName: string;
+  phone: string;
+  city: string;
+  address: string;
+  businessName: string;
+}
 
 const RegisterForm = () => {
-  const [step, setStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  
-  const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      userType: 'vendor',
-      fullName: '',
-      businessName: '',
-      email: '',
-      phone: '',
-      address: '',
-      city: '',
-      state: '',
-      zipCode: '',
-      password: '',
-      confirmPassword: '',
-    },
+  const { toast } = useToast();
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [formData, setFormData] = useState<FormData>({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    userType: 'vendor',
+    fullName: '',
+    phone: '',
+    city: '',
+    address: '',
+    businessName: '',
   });
 
-  const onSubmit = async (data: RegisterFormValues) => {
-    setIsLoading(true);
-    
-    try {
-      // In a real application, this would be an API call to register the user
-      console.log('Register data:', data);
-      
-      // Simulate API call
-      setTimeout(() => {
-        toast.success('Registration successful!');
-        // Redirect to the appropriate dashboard based on user type
-        navigate(`/dashboard/${data.userType}`);
-        setIsLoading(false);
-      }, 1500);
-    } catch (error) {
-      console.error('Registration error:', error);
-      toast.error('Registration failed. Please try again.');
-      setIsLoading(false);
-    }
+  const cities = ['Freetown', 'Kenema', 'Bo', 'Kailahun', 'Makeni'];
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const nextStep = async () => {
-    let fieldsToValidate: Array<keyof RegisterFormValues> = [];
-    
-    if (step === 1) {
-      fieldsToValidate = ['userType', 'fullName', 'businessName', 'email', 'phone'];
-    } else if (step === 2) {
-      fieldsToValidate = ['address', 'city', 'state', 'zipCode'];
-    }
-    
-    const isValid = await form.trigger(fieldsToValidate);
-    
-    if (isValid) {
-      setStep(step + 1);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Validate passwords match
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: "Error",
+          description: "Passwords do not match",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard/${formData.userType}`,
+          data: {
+            user_type: formData.userType,
+            full_name: formData.fullName,
+            phone: formData.phone,
+            city: formData.city,
+            address: formData.address,
+            business_name: formData.businessName,
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create user profile in the database
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            full_name: formData.fullName,
+            phone: formData.phone,
+            city: formData.city,
+            address: formData.address,
+            business_name: formData.businessName,
+          });
+
+        if (profileError) throw profileError;
+
+        // Create user record with user type
+        const { error: userError } = await supabase
+          .from('users')
+          .insert({
+            id: authData.user.id,
+            email: formData.email,
+            user_type: formData.userType,
+          });
+
+        if (userError) throw userError;
+
+        setVerificationSent(true);
+        toast({
+          title: "Registration Successful",
+          description: "Please check your email to verify your account",
+        });
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast({
+        title: "Registration Failed",
+        description: error instanceof Error ? error.message : "An error occurred during registration",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <motion.div 
-      className="auth-card p-8 w-full max-w-xl mx-auto"
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      className="w-full max-w-md space-y-8"
     >
-      <div className="space-y-6">
-        <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-bold">Create an Account</h1>
-          <p className="text-muted-foreground">Register to use Mi-Boks</p>
-          
-          <div className="flex items-center justify-center gap-1 pt-2">
-            <div className={`h-2 w-8 rounded-full ${step === 1 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
-            <div className={`h-2 w-8 rounded-full ${step === 2 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
-            <div className={`h-2 w-8 rounded-full ${step === 3 ? 'bg-blue-600' : 'bg-gray-200'}`}></div>
-          </div>
-        </div>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <AnimatePresence mode="wait">
-              {step === 1 && (
-                <motion.div
-                  key="step1"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={form.control}
-                    name="userType"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1">
-                        <FormLabel>I am a</FormLabel>
-                        <FormDescription>Choose your account type</FormDescription>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            className="grid grid-cols-2 gap-4"
-                          >
-                            <FormItem>
-                              <FormControl>
-                                <RadioGroupItem
-                                  value="vendor"
-                                  id="vendor"
-                                  className="peer sr-only"
-                                />
-                              </FormControl>
-                              <label
-                                htmlFor="vendor"
-                                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-vendor [&:has([data-state=checked])]:border-vendor"
-                              >
-                                <Building className="mb-3 h-6 w-6" />
-                                <div className="font-medium">Vendor</div>
-                              </label>
-                            </FormItem>
-                            <FormItem>
-                              <FormControl>
-                                <RadioGroupItem
-                                  value="supplier"
-                                  id="supplier"
-                                  className="peer sr-only"
-                                />
-                              </FormControl>
-                              <label
-                                htmlFor="supplier"
-                                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-supplier [&:has([data-state=checked])]:border-supplier"
-                              >
-                                <Building className="mb-3 h-6 w-6" />
-                                <div className="font-medium">Supplier</div>
-                              </label>
-                            </FormItem>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                
-                  <FormField
-                    control={form.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="John Doe" className="pl-10" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="businessName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Business Name</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input placeholder="Your Business Name" className="pl-10" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              type="email" 
-                              placeholder="you@example.com" 
-                              className="pl-10"
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              placeholder="+1 123 456 7890" 
-                              className="pl-10"
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <Button 
-                    type="button" 
-                    onClick={nextStep}
-                    className="w-full"
-                  >
-                    Continue <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </motion.div>
-              )}
-              
-              {step === 2 && (
-                <motion.div
-                  key="step2"
-                  initial={{ opacity: 0, x: 100 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -100 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              placeholder="123 Main St" 
-                              className="pl-10"
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl>
-                            <Input placeholder="New York" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="NY">New York</SelectItem>
-                              <SelectItem value="CA">California</SelectItem>
-                              <SelectItem value="TX">Texas</SelectItem>
-                              <SelectItem value="FL">Florida</SelectItem>
-                              <SelectItem value="IL">Illinois</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="zipCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Zip Code</FormLabel>
-                        <FormControl>
-                          <Input placeholder="10001" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex space-x-4">
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={() => setStep(1)}
-                      className="flex-1"
-                    >
-                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                    </Button>
-                    <Button 
-                      type="button" 
-                      onClick={nextStep}
-                      className="flex-1"
-                    >
-                      Continue <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-              
-              {step === 3 && (
-                <motion.div
-                  key="step3"
-                  initial={{ opacity: 0, x: 100 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 100 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-4"
-                >
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              type="password" 
-                              placeholder="••••••••" 
-                              className="pl-10"
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          Use at least 8 characters with letters and numbers
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              type="password" 
-                              placeholder="••••••••" 
-                              className="pl-10"
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex space-x-4">
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={() => setStep(2)}
-                      className="flex-1"
-                    >
-                      <ArrowLeft className="mr-2 h-4 w-4" /> Back
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      className="flex-1"
-                      disabled={isLoading}
-                    >
-                      {isLoading ? 'Registering...' : 'Register'}
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </form>
-        </Form>
-
-        <div className="mt-6 text-center text-sm">
-          Already have an account?{' '}
-          <Link to="/login" className="text-blue-600 hover:text-blue-800 font-semibold">
-            Sign in
-          </Link>
-        </div>
+      <div className="text-center">
+        <h2 className="text-3xl font-bold tracking-tight">Create an account</h2>
+        <p className="mt-2 text-sm text-gray-600">
+          {step === 1 ? "Choose your account type" : "Complete your profile"}
+        </p>
       </div>
+
+      {verificationSent ? (
+        <div className="text-center space-y-4">
+          <p className="text-green-600">
+            Please check your email to verify your account before logging in.
+          </p>
+          <Button
+            onClick={() => navigate('/login')}
+            className="w-full"
+          >
+            Return to Login
+          </Button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {step === 1 ? (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-4"
+            >
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Account Type</Label>
+                <RadioGroup
+                  value={formData.userType}
+                  onValueChange={(value: 'vendor' | 'supplier') =>
+                    setFormData(prev => ({ ...prev, userType: value }))
+                  }
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="vendor" id="vendor" />
+                    <Label htmlFor="vendor">Vendor</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="supplier" id="supplier" />
+                    <Label htmlFor="supplier">Supplier</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="space-y-4"
+            >
+              <div>
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  name="fullName"
+                  required
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="businessName">Business Name</Label>
+                <Input
+                  id="businessName"
+                  name="businessName"
+                  required
+                  value={formData.businessName}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  required
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="city">City</Label>
+                <Select
+                  value={formData.city}
+                  onValueChange={(value) =>
+                    setFormData(prev => ({ ...prev, city: value }))
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select your city" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  name="address"
+                  required
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className="mt-1"
+                />
+              </div>
+            </motion.div>
+          )}
+
+          <div className="flex justify-between">
+            {step === 2 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setStep(1)}
+                disabled={loading}
+              >
+                Back
+              </Button>
+            )}
+            {step === 1 ? (
+              <Button
+                type="button"
+                onClick={() => setStep(2)}
+                className="ml-auto"
+                disabled={loading}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                className="ml-auto"
+                disabled={loading}
+              >
+                {loading ? 'Creating Account...' : 'Create Account'}
+              </Button>
+            )}
+          </div>
+        </form>
+      )}
     </motion.div>
   );
 };

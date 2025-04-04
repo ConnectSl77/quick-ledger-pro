@@ -15,10 +15,10 @@ const Hero = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <div className="flex justify-center mb-6">
-              <div className="w-64 h-16 bg-gray-200 rounded-lg animate-pulse"></div>
-            </div>
-            <p className="mt-6 text-lg leading-8 text-gray-600 animate-fade-in">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+              Quick Ledger Pro
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-gray-600">
               The complete business management solution for vendors and suppliers. 
               Manage invoices, inventory, sales, and suppliers in one powerful platform.
             </p>
