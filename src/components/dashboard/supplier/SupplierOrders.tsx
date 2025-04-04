@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, FileDownload, Eye } from 'lucide-react';
+import { Search, Filter, Download, Eye } from 'lucide-react';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,7 +30,6 @@ const itemVariants = {
   visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
 };
 
-// Sample data for orders
 const orders = [
   {
     id: 'ORD-001',
@@ -111,7 +109,7 @@ const SupplierOrders = () => {
             Filter
           </Button>
           <Button variant="outline" size="sm">
-            <FileDownload className="mr-2 h-4 w-4" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
         </div>
