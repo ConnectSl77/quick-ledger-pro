@@ -64,7 +64,7 @@ const SupplierDashboard = () => {
   const statsCards = [
     { 
       title: 'Total Revenue', 
-      value: `$${stats.totalRevenue.toLocaleString()}`, 
+      value: `SLL ${stats.totalRevenue.toLocaleString()}`, 
       change: '+10%', 
       icon: DollarSign,
       description: 'Compared to last month',
@@ -234,7 +234,7 @@ const SupplierDashboard = () => {
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
                       <td className="p-4">{order.customer_name}</td>
-                      <td className="p-4 font-medium">${order.amount.toLocaleString()}</td>
+                      <td className="p-4 font-medium">SLL {order.amount.toLocaleString()}</td>
                       <td className="p-4 text-muted-foreground">
                         {new Date(order.created_at).toLocaleDateString()}
                       </td>
