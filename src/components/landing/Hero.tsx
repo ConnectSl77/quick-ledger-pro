@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 const Hero = () => {
   return (
-    <div className="relative overflow-hidden bg-gradient-to-b from-white to-gray-50 py-16 sm:py-24">
+    <section className="relative overflow-hidden bg-gradient-to-b from-white to-gray-50 py-16 sm:py-24">
       <div className="relative">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <motion.div 
@@ -62,7 +62,7 @@ const Hero = () => {
           </motion.div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 
