@@ -13,6 +13,13 @@ import DashboardLayout from "./pages/DashboardLayout";
 import VendorDashboardPage from "./pages/VendorDashboardPage";
 import SupplierDashboardPage from "./pages/SupplierDashboardPage";
 
+// Import supplier pages
+import SupplierOrdersPage from "./pages/supplier/SupplierOrdersPage";
+import SupplierInventoryPage from "./pages/supplier/SupplierInventoryPage";
+import SupplierCustomersPage from "./pages/supplier/SupplierCustomersPage";
+import SupplierPaymentsPage from "./pages/supplier/SupplierPaymentsPage";
+import SupplierSettingsPage from "./pages/supplier/SupplierSettingsPage";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -33,6 +40,11 @@ const App = () => (
             
             <Route path="/dashboard/supplier" element={<DashboardLayout />}>
               <Route index element={<SupplierDashboardPage />} />
+              <Route path="orders" element={<SupplierOrdersPage />} />
+              <Route path="inventory" element={<SupplierInventoryPage />} />
+              <Route path="customers" element={<SupplierCustomersPage />} />
+              <Route path="payments" element={<SupplierPaymentsPage />} />
+              <Route path="settings" element={<SupplierSettingsPage />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
