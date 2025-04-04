@@ -20,7 +20,14 @@ import SupplierCustomersPage from "./pages/supplier/SupplierCustomersPage";
 import SupplierPaymentsPage from "./pages/supplier/SupplierPaymentsPage";
 import SupplierSettingsPage from "./pages/supplier/SupplierSettingsPage";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,7 +41,7 @@ const App = () => (
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             
-            <Route path="/dashboard/:userType" element={<DashboardLayout />}>
+            <Route path="/dashboard/vendor" element={<DashboardLayout />}>
               <Route index element={<VendorDashboardPage />} />
             </Route>
             

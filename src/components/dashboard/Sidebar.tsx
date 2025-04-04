@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import React from 'react';
+=======
+
+import React, { useState } from 'react';
+>>>>>>> 17954120b1e96a281f99f75ac7fc5c9678729be4
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -13,10 +18,16 @@ import {
   CreditCard,
   ChevronRight,
   Menu,
+<<<<<<< HEAD
   ShoppingBag,
   BarChart,
+=======
+  MessageSquare,
+>>>>>>> 17954120b1e96a281f99f75ac7fc5c9678729be4
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import MessagePanel from './messaging/MessagePanel';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -26,6 +37,8 @@ interface SidebarProps {
 const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
   const location = useLocation();
   const { userType } = useParams();
+  const { toast } = useToast();
+  const [messageVisible, setMessageVisible] = useState(false);
   
   const isVendor = userType === 'vendor';
   
@@ -51,6 +64,7 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
   const links = isVendor ? vendorLinks : supplierLinks;
   const accentColor = isVendor ? 'vendor' : 'supplier';
 
+<<<<<<< HEAD
   const navigationItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Products', href: '/products', icon: Package },
@@ -59,6 +73,17 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
     { name: 'Reports', href: '/reports', icon: BarChart },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
+=======
+  const toggleMessages = () => {
+    setMessageVisible(!messageVisible);
+    if (!messageVisible) {
+      toast({
+        title: "Messages Panel",
+        description: "You can now communicate with your suppliers/vendors",
+      });
+    }
+  };
+>>>>>>> 17954120b1e96a281f99f75ac7fc5c9678729be4
 
   return (
     <motion.div 
@@ -122,8 +147,43 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
               </Link>
             );
           })}
+          
+          {/* Messages Button */}
+          <button
+            onClick={toggleMessages}
+            className={cn(
+              "flex items-center px-3 py-2 rounded-md group w-full",
+              messageVisible 
+                ? `bg-${accentColor}/10 text-${accentColor}` 
+                : "text-gray-600 hover:bg-gray-100",
+              collapsed && "justify-center"
+            )}
+          >
+            <MessageSquare className={cn(
+              "h-5 w-5 flex-shrink-0", 
+              messageVisible && `text-${accentColor}`
+            )} />
+            {!collapsed && (
+              <>
+                <span className="ml-3">Messages</span>
+                {messageVisible && (
+                  <motion.div 
+                    layoutId="activeMessage"
+                    className={`ml-auto h-4 w-1 rounded-full bg-${accentColor}`} 
+                  />
+                )}
+              </>
+            )}
+          </button>
         </nav>
       </div>
+      
+      {/* Message Panel */}
+      {messageVisible && !collapsed && (
+        <div className="p-3 border-t">
+          <MessagePanel userType={userType || 'supplier'} />
+        </div>
+      )}
       
       <div className="p-4 border-t">
         <Link
