@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,11 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Search, Filter, Download, Eye } from 'lucide-react';
+import { getCurrentSupplierId, getSupplierOrders } from '@/integrations/supabase/queries';
+import { useQuery } from '@tanstack/react-query';
+import type { Database } from '@/integrations/supabase/types';
+
+type Order = Database['public']['Tables']['orders']['Row'];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -29,49 +35,6 @@ const itemVariants = {
   hidden: { y: 20, opacity: 0 },
   visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
 };
-
-const orders = [
-  {
-    id: 'ORD-001',
-    customer: 'ACME Trading',
-    date: '2025-04-02',
-    amount: 1250.00,
-    status: 'delivered',
-    items: 5,
-  },
-  {
-    id: 'ORD-002',
-    customer: 'Global Markets Ltd',
-    date: '2025-04-01',
-    amount: 890.50,
-    status: 'shipped',
-    items: 3,
-  },
-  {
-    id: 'ORD-003',
-    customer: 'Local Store Inc',
-    date: '2025-03-30',
-    amount: 320.75,
-    status: 'processing',
-    items: 2,
-  },
-  {
-    id: 'ORD-004',
-    customer: 'City Mart',
-    date: '2025-03-28',
-    amount: 1450.00,
-    status: 'delivered',
-    items: 8,
-  },
-  {
-    id: 'ORD-005',
-    customer: 'Fresh Foods Market',
-    date: '2025-03-25',
-    amount: 785.25,
-    status: 'cancelled',
-    items: 4,
-  },
-];
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -90,6 +53,49 @@ const getStatusColor = (status: string) => {
 
 const SupplierOrders = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [supplierId, setSupplierId] = useState<string>('');
+  const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
+
+  // Fetch supplier ID first
+  useEffect(() => {
+    async function fetchSupplierId() {
+      try {
+        const id = await getCurrentSupplierId();
+        setSupplierId(id);
+      } catch (error) {
+        console.error('Error fetching supplier ID:', error);
+      }
+    }
+    
+    fetchSupplierId();
+  }, []);
+
+  // Only fetch orders once we have the supplier ID
+  const { data: orders = [], isLoading } = useQuery({
+    queryKey: ['supplierOrders', supplierId],
+    queryFn: () => getSupplierOrders(supplierId),
+    enabled: !!supplierId
+  });
+
+  // Filter orders based on search query
+  useEffect(() => {
+    if (orders) {
+      setFilteredOrders(
+        orders.filter(order => 
+          order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          order.status.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      );
+    }
+  }, [orders, searchQuery]);
+
+  if (isLoading || !supplierId) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -150,26 +156,32 @@ const SupplierOrders = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id}</TableCell>
-                      <TableCell>{order.customer}</TableCell>
-                      <TableCell>{new Date(order.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{order.items}</TableCell>
-                      <TableCell>SLL {order.amount.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(order.status)} variant="outline">
-                          {order.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                          <span className="sr-only">View</span>
-                        </Button>
-                      </TableCell>
+                  {filteredOrders.length > 0 ? (
+                    filteredOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">{order.id.substring(0, 8)}</TableCell>
+                        <TableCell>{order.customer_name}</TableCell>
+                        <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>{order.items}</TableCell>
+                        <TableCell>SLL {Number(order.amount).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(order.status)} variant="outline">
+                            {order.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4" />
+                            <span className="sr-only">View</span>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-4">No orders found</TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>

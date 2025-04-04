@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Plus, Edit, Trash, BarChart4 } from 'lucide-react';
+import { getCurrentSupplierId, getSupplierProducts } from '@/integrations/supabase/queries';
+import { useQuery } from '@tanstack/react-query';
+import type { Database } from '@/integrations/supabase/types';
+
+type Product = Database['public']['Tables']['products']['Row'];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -30,50 +35,6 @@ const itemVariants = {
   hidden: { y: 20, opacity: 0 },
   visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
 };
-
-// Sample data for products
-const products = [
-  {
-    id: 'P001',
-    name: 'Premium Rice (25kg)',
-    category: 'Grains',
-    price: 120.00,
-    stock: 45,
-    status: 'in_stock',
-  },
-  {
-    id: 'P002',
-    name: 'Vegetable Oil (5L)',
-    category: 'Cooking Oil',
-    price: 85.50,
-    stock: 12,
-    status: 'low_stock',
-  },
-  {
-    id: 'P003',
-    name: 'Sugar (10kg)',
-    category: 'Sweeteners',
-    price: 65.25,
-    stock: 30,
-    status: 'in_stock',
-  },
-  {
-    id: 'P004',
-    name: 'Flour (5kg)',
-    category: 'Baking',
-    price: 45.00,
-    stock: 8,
-    status: 'low_stock',
-  },
-  {
-    id: 'P005',
-    name: 'Beans (10kg)',
-    category: 'Legumes',
-    price: 78.00,
-    stock: 0,
-    status: 'out_of_stock',
-  },
-];
 
 const getStockStatusColor = (status: string) => {
   switch (status) {
@@ -103,6 +64,54 @@ const getStockStatusLabel = (status: string) => {
 
 const SupplierInventory = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [supplierId, setSupplierId] = useState<string>('');
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+
+  // Fetch supplier ID first
+  useEffect(() => {
+    async function fetchSupplierId() {
+      try {
+        const id = await getCurrentSupplierId();
+        setSupplierId(id);
+      } catch (error) {
+        console.error('Error fetching supplier ID:', error);
+      }
+    }
+    
+    fetchSupplierId();
+  }, []);
+
+  // Only fetch products once we have the supplier ID
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['supplierProducts', supplierId],
+    queryFn: () => getSupplierProducts(supplierId),
+    enabled: !!supplierId
+  });
+
+  // Filter products based on search query
+  useEffect(() => {
+    if (products) {
+      setFilteredProducts(
+        products.filter(product => 
+          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.status?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      );
+    }
+  }, [products, searchQuery]);
+
+  // Calculate inventory stats
+  const lowStockCount = products.filter(p => p.status === 'low_stock').length;
+  const outOfStockCount = products.filter(p => p.status === 'out_of_stock').length;
+
+  if (isLoading || !supplierId) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -139,7 +148,7 @@ const SupplierInventory = () => {
               <CardTitle className="text-sm font-medium text-muted-foreground">Low Stock Items</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{products.filter(p => p.status === 'low_stock').length}</p>
+              <p className="text-2xl font-bold">{lowStockCount}</p>
             </CardContent>
           </Card>
           <Card>
@@ -147,7 +156,7 @@ const SupplierInventory = () => {
               <CardTitle className="text-sm font-medium text-muted-foreground">Out of Stock</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{products.filter(p => p.status === 'out_of_stock').length}</p>
+              <p className="text-2xl font-bold">{outOfStockCount}</p>
             </CardContent>
           </Card>
         </div>
@@ -188,36 +197,42 @@ const SupplierInventory = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.id}</TableCell>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell>{product.category}</TableCell>
-                      <TableCell>SLL {product.price.toLocaleString()}</TableCell>
-                      <TableCell>{product.stock}</TableCell>
-                      <TableCell>
-                        <Badge className={getStockStatusColor(product.status)} variant="outline">
-                          {getStockStatusLabel(product.status)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                            <span className="sr-only">Edit</span>
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <BarChart4 className="h-4 w-4" />
-                            <span className="sr-only">Analytics</span>
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-red-500">
-                            <Trash className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
-                        </div>
-                      </TableCell>
+                  {filteredProducts.length > 0 ? (
+                    filteredProducts.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell className="font-medium">{product.id.substring(0, 8)}</TableCell>
+                        <TableCell>{product.name}</TableCell>
+                        <TableCell>{product.category || 'N/A'}</TableCell>
+                        <TableCell>SLL {Number(product.price).toLocaleString()}</TableCell>
+                        <TableCell>{product.stock}</TableCell>
+                        <TableCell>
+                          <Badge className={getStockStatusColor(product.status || '')} variant="outline">
+                            {getStockStatusLabel(product.status || '')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="sm">
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <BarChart4 className="h-4 w-4" />
+                              <span className="sr-only">Analytics</span>
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-red-500">
+                              <Trash className="h-4 w-4" />
+                              <span className="sr-only">Delete</span>
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-4">No products found</TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
