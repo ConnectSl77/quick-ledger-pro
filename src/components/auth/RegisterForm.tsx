@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -63,8 +62,9 @@ const RegisterForm = () => {
       
       // Simulate API call
       setTimeout(() => {
-        toast.success('Registration successful! Please log in.');
-        navigate(`/login`);
+        toast.success('Registration successful!');
+        // Redirect to the appropriate dashboard based on user type
+        navigate(`/dashboard/${data.userType}`);
         setIsLoading(false);
       }, 1500);
     } catch (error) {

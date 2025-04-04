@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +18,14 @@ import SupplierInventoryPage from "./pages/supplier/SupplierInventoryPage";
 import SupplierCustomersPage from "./pages/supplier/SupplierCustomersPage";
 import SupplierPaymentsPage from "./pages/supplier/SupplierPaymentsPage";
 import SupplierSettingsPage from "./pages/supplier/SupplierSettingsPage";
+
+// Import vendor pages
+import VendorInvoicesPage from "./pages/vendor/VendorInvoicesPage";
+import VendorSalesPage from "./pages/vendor/VendorSalesPage";
+import VendorInventoryPage from "./pages/vendor/VendorInventoryPage";
+import VendorSuppliersPage from "./pages/vendor/VendorSuppliersPage";
+import VendorPaymentsPage from "./pages/vendor/VendorPaymentsPage";
+import VendorSettingsPage from "./pages/vendor/VendorSettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,6 +50,12 @@ const App = () => (
             
             <Route path="/dashboard/vendor" element={<DashboardLayout />}>
               <Route index element={<VendorDashboardPage />} />
+              <Route path="invoices" element={<VendorInvoicesPage />} />
+              <Route path="sales" element={<VendorSalesPage />} />
+              <Route path="inventory" element={<VendorInventoryPage />} />
+              <Route path="suppliers" element={<VendorSuppliersPage />} />
+              <Route path="payments" element={<VendorPaymentsPage />} />
+              <Route path="settings" element={<VendorSettingsPage />} />
             </Route>
             
             <Route path="/dashboard/supplier" element={<DashboardLayout />}>

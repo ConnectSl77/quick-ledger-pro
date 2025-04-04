@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-import React from 'react';
-=======
-
 import React, { useState } from 'react';
->>>>>>> 17954120b1e96a281f99f75ac7fc5c9678729be4
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -18,12 +13,9 @@ import {
   CreditCard,
   ChevronRight,
   Menu,
-<<<<<<< HEAD
+  MessageSquare,
   ShoppingBag,
   BarChart,
-=======
-  MessageSquare,
->>>>>>> 17954120b1e96a281f99f75ac7fc5c9678729be4
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -64,16 +56,6 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
   const links = isVendor ? vendorLinks : supplierLinks;
   const accentColor = isVendor ? 'vendor' : 'supplier';
 
-<<<<<<< HEAD
-  const navigationItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Products', href: '/products', icon: Package },
-    { name: 'Vendors', href: '/vendors', icon: Users },
-    { name: 'Orders', href: '/orders', icon: ShoppingBag },
-    { name: 'Reports', href: '/reports', icon: BarChart },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ];
-=======
   const toggleMessages = () => {
     setMessageVisible(!messageVisible);
     if (!messageVisible) {
@@ -83,7 +65,6 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
       });
     }
   };
->>>>>>> 17954120b1e96a281f99f75ac7fc5c9678729be4
 
   return (
     <motion.div 

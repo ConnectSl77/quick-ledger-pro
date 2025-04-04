@@ -1,106 +1,111 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { ArrowUpRight, DollarSign, Package, Users, ShoppingCart, FileText } from 'lucide-react';
-import { getVendorStats, getMonthlyStats, getCustomerDistribution } from '@/integrations/supabase/queries';
-import type { Database } from '@/integrations/supabase/types';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { DollarSign, Package, Users, ShoppingBag, Truck } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-type Order = Database['public']['Tables']['orders']['Row'];
+interface Order {
+  id: string;
+  amount: number;
+  created_at: string;
+  status: string;
+  supplier_id: string;
+  supplier_name: string;
+}
+
+interface Stats {
+  totalRevenue: number;
+  totalProducts: number;
+  totalOrders: number;
+  recentOrders: Order[];
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
+      staggerChildren: 0.1
+    }
+  }
 };
 
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
+  visible: {
+    y: 0,
+    opacity: 1
+  }
 };
 
 const VendorDashboard = () => {
-  const [stats, setStats] = useState({
-    totalRevenue: 0,
-    totalProducts: 0,
-    totalOrders: 0,
-    recentOrders: [],
-  });
-  const [salesData, setSalesData] = useState([]);
-  const [inventoryData, setInventoryData] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Replace 'vendor-id' with the actual vendor ID from your auth system
-        const vendorId = 'vendor-id';
-        const [statsData, monthlyData, customerData] = await Promise.all([
-          getVendorStats(vendorId),
-          getMonthlyStats(vendorId, true),
-          getCustomerDistribution(vendorId, true),
-        ]);
-
-        setStats(statsData);
-        setSalesData(monthlyData);
-        setInventoryData(customerData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
+  // Mock data - replace with real data from Supabase
+  const stats: Stats = {
+    totalRevenue: 50000,
+    totalProducts: 150,
+    totalOrders: 45,
+    recentOrders: [
+      {
+        id: '1',
+        supplier_name: 'Supplier A',
+        amount: 1200,
+        created_at: '2024-03-15',
+        status: 'delivered',
+        supplier_id: 'supplier-1'
+      },
+      {
+        id: '2',
+        supplier_name: 'Supplier B',
+        amount: 800,
+        created_at: '2024-03-14',
+        status: 'shipped',
+        supplier_id: 'supplier-2'
+      },
+      {
+        id: '3',
+        supplier_name: 'Supplier C',
+        amount: 1500,
+        created_at: '2024-03-13',
+        status: 'pending',
+        supplier_id: 'supplier-3'
       }
-    };
-
-    fetchData();
-  }, []);
+    ]
+  };
 
   const statsCards = [
     { 
       title: 'Total Revenue', 
-      value: `$${stats.totalRevenue.toLocaleString()}`, 
-      change: '+15%', 
+      value: `SLL ${stats.totalRevenue.toLocaleString()}`, 
+      change: '+10%', 
       icon: DollarSign,
       description: 'Compared to last month',
-      color: 'blue',
+      color: 'green',
     },
     { 
       title: 'Products', 
       value: stats.totalProducts.toString(), 
-      change: '+4%', 
+      change: '+5%', 
       icon: Package,
       description: 'Active products',
-      color: 'green',
+      color: 'blue',
     },
     { 
-      title: 'Customers', 
+      title: 'Suppliers', 
       value: stats.recentOrders.length.toString(), 
-      change: '+2%', 
+      change: '+8%', 
       icon: Users,
-      description: 'Active customers',
-      color: 'purple',
+      description: 'Active suppliers',
+      color: 'indigo',
     },
     { 
       title: 'Orders', 
       value: stats.totalOrders.toString(), 
-      change: '+12%', 
-      icon: ShoppingCart,
+      change: '+14%', 
+      icon: ShoppingBag,
       description: 'Total orders',
       color: 'amber',
     },
   ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-      </div>
-    );
-  }
 
   return (
     <motion.div
@@ -109,99 +114,39 @@ const VendorDashboard = () => {
       initial="hidden"
       animate="visible"
     >
-      <div className="flex items-center justify-between">
-        <motion.h1 
-          className="text-2xl font-semibold text-gray-900"
-          variants={itemVariants}
-        >
-          Vendor Dashboard
-        </motion.h1>
-        <motion.div variants={itemVariants}>
-          <p className="text-sm text-gray-500">Last updated: {new Date().toLocaleDateString()}</p>
-        </motion.div>
-      </div>
-      
-      <motion.div 
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"
-        variants={itemVariants}
-      >
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statsCards.map((card) => (
-          <Card key={card.title} className="overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-              <card.icon className={`h-4 w-4 text-${card.color}-500`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                <span className={`flex items-center text-${card.color}-600 mr-1`}>
-                  <ArrowUpRight className="h-3 w-3 mr-1" /> {card.change}
-                </span>
-                {card.description}
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div key={card.title} variants={itemVariants}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {card.title}
+                </CardTitle>
+                <card.icon className={cn("h-4 w-4", `text-${card.color}-500`)} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+                <p className="text-xs text-muted-foreground">
+                  {card.description}
+                </p>
+                <div className={cn("text-xs font-medium", `text-${card.color}-500`)}>
+                  {card.change}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
-      </motion.div>
-      
-      <motion.div className="grid grid-cols-1 lg:grid-cols-2 gap-6" variants={itemVariants}>
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle>Revenue Overview</CardTitle>
-            <CardDescription>Monthly revenue for the current year</CardDescription>
-          </CardHeader>
-          <CardContent className="px-0">
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={salesData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                  <XAxis dataKey="name" stroke="#888888" fontSize={12} />
-                  <YAxis stroke="#888888" fontSize={12} />
-                  <Tooltip />
-                  <Line
-                    type="monotone"
-                    dataKey="amount"
-                    stroke="#1E88E5"
-                    strokeWidth={3}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      </div>
 
-        <Card className="overflow-hidden">
-          <CardHeader>
-            <CardTitle>Customer Distribution</CardTitle>
-            <CardDescription>Breakdown of customer segments</CardDescription>
-          </CardHeader>
-          <CardContent className="px-0">
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={inventoryData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
-                  <XAxis dataKey="name" stroke="#888888" fontSize={12} />
-                  <YAxis stroke="#888888" fontSize={12} />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#1E88E5" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-      
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>Recent Transactions</CardTitle>
-                <CardDescription>Latest sales and orders</CardDescription>
+                <CardTitle>Recent Orders</CardTitle>
+                <CardDescription>Latest supplier orders</CardDescription>
               </div>
-              <FileText className="h-5 w-5 text-gray-500" />
+              <Truck className="h-5 w-5 text-gray-500" />
             </div>
           </CardHeader>
           <CardContent>
@@ -209,20 +154,20 @@ const VendorDashboard = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b text-sm text-muted-foreground">
-                    <th className="p-4 text-left">Customer</th>
+                    <th className="p-4 text-left">Supplier</th>
                     <th className="p-4 text-left">Amount</th>
                     <th className="p-4 text-left">Date</th>
                     <th className="p-4 text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.recentOrders.map((order: Order) => (
+                  {stats.recentOrders.map((order) => (
                     <tr 
                       key={order.id} 
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
-                      <td className="p-4">{order.customer_name}</td>
-                      <td className="p-4 font-medium">${order.amount.toLocaleString()}</td>
+                      <td className="p-4">{order.supplier_name}</td>
+                      <td className="p-4 font-medium">SLL {order.amount.toLocaleString()}</td>
                       <td className="p-4 text-muted-foreground">
                         {new Date(order.created_at).toLocaleDateString()}
                       </td>

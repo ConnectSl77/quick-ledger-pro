@@ -1,14 +1,30 @@
-
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { ArrowUpRight, DollarSign, Package, Users, ShoppingBag, Truck } from 'lucide-react';
+import { DollarSign, Package, Users, ShoppingBag, Truck } from 'lucide-react';
 import { getSupplierStats, getMonthlyStats, getCustomerDistribution, getCurrentSupplierId } from '@/integrations/supabase/queries';
 import { useQuery } from '@tanstack/react-query';
 import type { Database } from '@/integrations/supabase/types';
+import { cn } from '@/lib/utils';
 
 type Order = Database['public']['Tables']['orders']['Row'];
+
+interface Stats {
+  totalRevenue: number;
+  totalProducts: number;
+  totalOrders: number;
+  recentOrders: Order[];
+}
+
+interface StatsCard {
+  title: string;
+  value: string;
+  change: string;
+  icon: React.ElementType;
+  description: string;
+  color: string;
+}
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -17,21 +33,22 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2,
-    },
-  },
+      staggerChildren: 0.1
+    }
+  }
 };
 
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
+  visible: {
+    y: 0,
+    opacity: 1
+  }
 };
 
 const SupplierDashboard = () => {
   const [supplierId, setSupplierId] = useState<string>('');
 
-  // Fetch supplier ID first
   useEffect(() => {
     async function fetchSupplierId() {
       try {
@@ -45,7 +62,6 @@ const SupplierDashboard = () => {
     fetchSupplierId();
   }, []);
 
-  // Only fetch data once we have the supplier ID
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['supplierStats', supplierId],
     queryFn: () => getSupplierStats(supplierId),
@@ -66,7 +82,7 @@ const SupplierDashboard = () => {
 
   const isLoading = statsLoading || orderDataLoading || customerDataLoading || !supplierId;
 
-  const statsCards = stats ? [
+  const statsCards: StatsCard[] = stats ? [
     { 
       title: 'Total Revenue', 
       value: `SLL ${stats.totalRevenue.toLocaleString()}`, 
@@ -84,13 +100,8 @@ const SupplierDashboard = () => {
       color: 'blue',
     },
     { 
-<<<<<<< HEAD
       title: 'Vendors', 
       value: stats.recentOrders.length.toString(), 
-=======
-      title: 'Customers', 
-      value: (customerData?.length || 0).toString(), 
->>>>>>> 1ff5c04f743c5bfe28dba5e5e584652c5b0c4729
       change: '+8%', 
       icon: Users,
       description: 'Active vendors',
@@ -138,21 +149,25 @@ const SupplierDashboard = () => {
         variants={itemVariants}
       >
         {statsCards.map((card) => (
-          <Card key={card.title} className="overflow-hidden">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-              <card.icon className={`h-4 w-4 text-${card.color}-500`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
-              <div className="flex items-center text-xs text-muted-foreground">
-                <span className={`flex items-center text-${card.color}-600 mr-1`}>
-                  <ArrowUpRight className="h-3 w-3 mr-1" /> {card.change}
-                </span>
-                {card.description}
-              </div>
-            </CardContent>
-          </Card>
+          <motion.div key={card.title} variants={itemVariants}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {card.title}
+                </CardTitle>
+                <card.icon className={cn("h-4 w-4", `text-${card.color}-500`)} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{card.value}</div>
+                <p className="text-xs text-muted-foreground">
+                  {card.description}
+                </p>
+                <div className={cn("text-xs font-medium", `text-${card.color}-500`)}>
+                  {card.change}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </motion.div>
       
@@ -186,8 +201,8 @@ const SupplierDashboard = () => {
 
         <Card className="overflow-hidden">
           <CardHeader>
-            <CardTitle>Customer Distribution</CardTitle>
-            <CardDescription>Breakdown of customer segments</CardDescription>
+            <CardTitle>Vendor Distribution</CardTitle>
+            <CardDescription>Breakdown of vendor segments</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
             <div className="h-[300px]">
@@ -238,20 +253,15 @@ const SupplierDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats?.recentOrders.map((order: Order) => (
+                  {stats?.recentOrders.map((order) => (
                     <tr 
                       key={order.id} 
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
-<<<<<<< HEAD
-                      <td className="p-4">{order.vendor_name}</td>
-                      <td className="p-4 font-medium">SLL {order.amount.toLocaleString()}</td>
-=======
                       <td className="p-4">{order.customer_name}</td>
                       <td className="p-4 font-medium">SLL {Number(order.amount).toLocaleString()}</td>
->>>>>>> 1ff5c04f743c5bfe28dba5e5e584652c5b0c4729
                       <td className="p-4 text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString()}
+                        {new Date(order.created_at || '').toLocaleDateString()}
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
