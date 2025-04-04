@@ -1,70 +1,14 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ArrowUpRight, DollarSign, Package, Users, ShoppingBag, Truck } from 'lucide-react';
+import { getSupplierStats, getMonthlyStats, getCustomerDistribution } from '@/integrations/supabase/queries';
+import type { Database } from '@/integrations/supabase/types';
 
-const orderData = [
-  { name: 'Jan', amount: 830 },
-  { name: 'Feb', amount: 1200 },
-  { name: 'Mar', amount: 1100 },
-  { name: 'Apr', amount: 1450 },
-  { name: 'May', amount: 1900 },
-  { name: 'Jun', amount: 2100 },
-  { name: 'Jul', amount: 1800 },
-];
-
-const customerDistributionData = [
-  { name: 'Retail Stores', value: 40 },
-  { name: 'Supermarkets', value: 30 },
-  { name: 'Online Retailers', value: 20 },
-  { name: 'Others', value: 10 },
-];
+type Order = Database['public']['Tables']['orders']['Row'];
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
-const statsCards = [
-  { 
-    title: 'Total Revenue', 
-    value: '$32,800', 
-    change: '+10%', 
-    icon: DollarSign,
-    description: 'Compared to last month',
-    color: 'green',
-  },
-  { 
-    title: 'Products', 
-    value: '78', 
-    change: '+5%', 
-    icon: Package,
-    description: '3 products added today',
-    color: 'blue',
-  },
-  { 
-    title: 'Customers', 
-    value: '24', 
-    change: '+8%', 
-    icon: Users,
-    description: '2 new customers this month',
-    color: 'indigo',
-  },
-  { 
-    title: 'Orders', 
-    value: '156', 
-    change: '+14%', 
-    icon: ShoppingBag,
-    description: '12 orders today',
-    color: 'amber',
-  },
-];
-
-const recentOrders = [
-  { id: 1, customer: 'SuperMart Inc.', amount: '$2,450.00', date: '2 hours ago', status: 'delivered' },
-  { id: 2, customer: 'QuickShop LLC', amount: '$1,800.50', date: 'Yesterday', status: 'shipped' },
-  { id: 3, customer: 'Metro Retail', amount: '$3,200.75', date: '2 days ago', status: 'processing' },
-  { id: 4, customer: 'City Stores', amount: '$980.00', date: '3 days ago', status: 'delivered' },
-];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -83,6 +27,83 @@ const itemVariants = {
 };
 
 const SupplierDashboard = () => {
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalProducts: 0,
+    totalOrders: 0,
+    recentOrders: [],
+  });
+  const [orderData, setOrderData] = useState([]);
+  const [customerData, setCustomerData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Replace 'supplier-id' with the actual supplier ID from your auth system
+        const supplierId = 'supplier-id';
+        const [statsData, monthlyData, customerDistributionData] = await Promise.all([
+          getSupplierStats(supplierId),
+          getMonthlyStats(supplierId, false),
+          getCustomerDistribution(supplierId, false),
+        ]);
+
+        setStats(statsData);
+        setOrderData(monthlyData);
+        setCustomerData(customerDistributionData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const statsCards = [
+    { 
+      title: 'Total Revenue', 
+      value: `$${stats.totalRevenue.toLocaleString()}`, 
+      change: '+10%', 
+      icon: DollarSign,
+      description: 'Compared to last month',
+      color: 'green',
+    },
+    { 
+      title: 'Products', 
+      value: stats.totalProducts.toString(), 
+      change: '+5%', 
+      icon: Package,
+      description: 'Active products',
+      color: 'blue',
+    },
+    { 
+      title: 'Customers', 
+      value: stats.recentOrders.length.toString(), 
+      change: '+8%', 
+      icon: Users,
+      description: 'Active customers',
+      color: 'indigo',
+    },
+    { 
+      title: 'Orders', 
+      value: stats.totalOrders.toString(), 
+      change: '+14%', 
+      icon: ShoppingBag,
+      description: 'Total orders',
+      color: 'amber',
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       className="p-6 space-y-6"
@@ -98,7 +119,7 @@ const SupplierDashboard = () => {
           Supplier Dashboard
         </motion.h1>
         <motion.div variants={itemVariants}>
-          <p className="text-sm text-gray-500">Last updated: April 4, 2025</p>
+          <p className="text-sm text-gray-500">Last updated: {new Date().toLocaleDateString()}</p>
         </motion.div>
       </div>
       
@@ -106,7 +127,7 @@ const SupplierDashboard = () => {
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"
         variants={itemVariants}
       >
-        {statsCards.map((card, index) => (
+        {statsCards.map((card) => (
           <Card key={card.title} className="overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
@@ -163,7 +184,7 @@ const SupplierDashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={customerDistributionData}
+                    data={customerData}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -172,7 +193,7 @@ const SupplierDashboard = () => {
                     dataKey="value"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {customerDistributionData.map((entry, index) => (
+                    {customerData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -207,14 +228,16 @@ const SupplierDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentOrders.map(order => (
+                  {stats.recentOrders.map((order: Order) => (
                     <tr 
                       key={order.id} 
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
-                      <td className="p-4">{order.customer}</td>
-                      <td className="p-4 font-medium">{order.amount}</td>
-                      <td className="p-4 text-muted-foreground">{order.date}</td>
+                      <td className="p-4">{order.customer_name}</td>
+                      <td className="p-4 font-medium">${order.amount.toLocaleString()}</td>
+                      <td className="p-4 text-muted-foreground">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
