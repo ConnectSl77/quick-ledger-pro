@@ -8,7 +8,9 @@ import { useQuery } from '@tanstack/react-query';
 import type { Database } from '@/integrations/supabase/types';
 import { cn } from '@/lib/utils';
 
-type Order = Database['public']['Tables']['orders']['Row'];
+type Order = Database['public']['Tables']['orders']['Row'] & {
+  vendor_name: string;
+};
 
 interface Stats {
   totalRevenue: number;
@@ -259,15 +261,14 @@ const SupplierDashboard = () => {
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
                       <td className="p-4">{order.customer_name}</td>
-                      <td className="p-4 font-medium">SLL {Number(order.amount).toLocaleString()}</td>
+                      <td className="p-4 font-medium">SLL {order.amount.toLocaleString()}</td>
                       <td className="p-4 text-muted-foreground">
-                        {new Date(order.created_at || '').toLocaleDateString()}
+                        {new Date(order.created_at).toLocaleDateString()}
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
                           order.status === 'shipped' ? 'bg-blue-100 text-blue-800' : 
-                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
                           {order.status}
