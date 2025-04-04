@@ -1,69 +1,12 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { ArrowUpRight, DollarSign, Package, Users, ShoppingCart, FileText } from 'lucide-react';
+import { getVendorStats, getMonthlyStats, getCustomerDistribution } from '@/integrations/supabase/queries';
+import type { Database } from '@/integrations/supabase/types';
 
-const salesData = [
-  { name: 'Jan', amount: 1200 },
-  { name: 'Feb', amount: 1900 },
-  { name: 'Mar', amount: 1500 },
-  { name: 'Apr', amount: 2400 },
-  { name: 'May', amount: 2700 },
-  { name: 'Jun', amount: 3100 },
-  { name: 'Jul', amount: 3500 },
-];
-
-const inventoryData = [
-  { name: 'Electronics', count: 45 },
-  { name: 'Clothing', count: 30 },
-  { name: 'Books', count: 25 },
-  { name: 'Food', count: 18 },
-  { name: 'Toys', count: 15 },
-];
-
-const statsCards = [
-  { 
-    title: 'Total Revenue', 
-    value: '$12,500', 
-    change: '+15%', 
-    icon: DollarSign,
-    description: 'Compared to last month',
-    color: 'blue',
-  },
-  { 
-    title: 'Products', 
-    value: '145', 
-    change: '+4%', 
-    icon: Package,
-    description: '5 products added today',
-    color: 'green',
-  },
-  { 
-    title: 'Suppliers', 
-    value: '12', 
-    change: '+2%', 
-    icon: Users,
-    description: '2 new suppliers this month',
-    color: 'purple',
-  },
-  { 
-    title: 'Sales', 
-    value: '352', 
-    change: '+12%', 
-    icon: ShoppingCart,
-    description: '42 sales today',
-    color: 'amber',
-  },
-];
-
-const recentTransactions = [
-  { id: 1, customer: 'John Smith', amount: '$124.00', date: '2 minutes ago', status: 'completed' },
-  { id: 2, customer: 'Lisa Johnson', amount: '$530.50', date: '2 hours ago', status: 'processing' },
-  { id: 3, customer: 'Michael Brown', amount: '$80.25', date: '5 hours ago', status: 'completed' },
-  { id: 4, customer: 'Sarah Davis', amount: '$250.00', date: 'Yesterday', status: 'completed' },
-];
+type Order = Database['public']['Tables']['orders']['Row'];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -82,6 +25,83 @@ const itemVariants = {
 };
 
 const VendorDashboard = () => {
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalProducts: 0,
+    totalOrders: 0,
+    recentOrders: [],
+  });
+  const [salesData, setSalesData] = useState([]);
+  const [inventoryData, setInventoryData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Replace 'vendor-id' with the actual vendor ID from your auth system
+        const vendorId = 'vendor-id';
+        const [statsData, monthlyData, customerData] = await Promise.all([
+          getVendorStats(vendorId),
+          getMonthlyStats(vendorId, true),
+          getCustomerDistribution(vendorId, true),
+        ]);
+
+        setStats(statsData);
+        setSalesData(monthlyData);
+        setInventoryData(customerData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const statsCards = [
+    { 
+      title: 'Total Revenue', 
+      value: `$${stats.totalRevenue.toLocaleString()}`, 
+      change: '+15%', 
+      icon: DollarSign,
+      description: 'Compared to last month',
+      color: 'blue',
+    },
+    { 
+      title: 'Products', 
+      value: stats.totalProducts.toString(), 
+      change: '+4%', 
+      icon: Package,
+      description: 'Active products',
+      color: 'green',
+    },
+    { 
+      title: 'Customers', 
+      value: stats.recentOrders.length.toString(), 
+      change: '+2%', 
+      icon: Users,
+      description: 'Active customers',
+      color: 'purple',
+    },
+    { 
+      title: 'Orders', 
+      value: stats.totalOrders.toString(), 
+      change: '+12%', 
+      icon: ShoppingCart,
+      description: 'Total orders',
+      color: 'amber',
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       className="p-6 space-y-6"
@@ -97,7 +117,7 @@ const VendorDashboard = () => {
           Vendor Dashboard
         </motion.h1>
         <motion.div variants={itemVariants}>
-          <p className="text-sm text-gray-500">Last updated: April 4, 2025</p>
+          <p className="text-sm text-gray-500">Last updated: {new Date().toLocaleDateString()}</p>
         </motion.div>
       </div>
       
@@ -105,7 +125,7 @@ const VendorDashboard = () => {
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5"
         variants={itemVariants}
       >
-        {statsCards.map((card, index) => (
+        {statsCards.map((card) => (
           <Card key={card.title} className="overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
@@ -154,8 +174,8 @@ const VendorDashboard = () => {
 
         <Card className="overflow-hidden">
           <CardHeader>
-            <CardTitle>Product Categories</CardTitle>
-            <CardDescription>Inventory distribution by category</CardDescription>
+            <CardTitle>Customer Distribution</CardTitle>
+            <CardDescription>Breakdown of customer segments</CardDescription>
           </CardHeader>
           <CardContent className="px-0">
             <div className="h-[300px]">
@@ -165,7 +185,7 @@ const VendorDashboard = () => {
                   <XAxis dataKey="name" stroke="#888888" fontSize={12} />
                   <YAxis stroke="#888888" fontSize={12} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#1E88E5" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" fill="#1E88E5" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -196,19 +216,23 @@ const VendorDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentTransactions.map(transaction => (
+                  {stats.recentOrders.map((order: Order) => (
                     <tr 
-                      key={transaction.id} 
+                      key={order.id} 
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
-                      <td className="p-4">{transaction.customer}</td>
-                      <td className="p-4 font-medium">{transaction.amount}</td>
-                      <td className="p-4 text-muted-foreground">{transaction.date}</td>
+                      <td className="p-4">{order.customer_name}</td>
+                      <td className="p-4 font-medium">${order.amount.toLocaleString()}</td>
+                      <td className="p-4 text-muted-foreground">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          transaction.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                          order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
+                          order.status === 'shipped' ? 'bg-blue-100 text-blue-800' : 
+                          'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {transaction.status}
+                          {order.status}
                         </span>
                       </td>
                     </tr>

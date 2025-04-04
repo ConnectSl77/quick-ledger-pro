@@ -9,7 +9,119 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      vendors: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      suppliers: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      products: {
+        Row: {
+          id: string
+          name: string
+          description: string
+          price: number
+          stock: number
+          vendor_id: string
+          supplier_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description: string
+          price: number
+          stock: number
+          vendor_id: string
+          supplier_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string
+          price?: number
+          stock?: number
+          vendor_id?: string
+          supplier_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      orders: {
+        Row: {
+          id: string
+          customer_name: string
+          amount: number
+          status: 'processing' | 'shipped' | 'delivered'
+          vendor_id: string
+          supplier_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          customer_name: string
+          amount: number
+          status: 'processing' | 'shipped' | 'delivered'
+          vendor_id: string
+          supplier_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          customer_name?: string
+          amount?: number
+          status?: 'processing' | 'shipped' | 'delivered'
+          vendor_id?: string
+          supplier_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
