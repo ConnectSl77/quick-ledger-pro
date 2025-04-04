@@ -18,6 +18,7 @@ import SupplierInventoryPage from "./pages/supplier/SupplierInventoryPage";
 import SupplierCustomersPage from "./pages/supplier/SupplierCustomersPage";
 import SupplierPaymentsPage from "./pages/supplier/SupplierPaymentsPage";
 import SupplierSettingsPage from "./pages/supplier/SupplierSettingsPage";
+import VendorPage from '@/pages/supplier/VendorPage';
 
 // Import vendor pages
 import VendorInvoicesPage from "./pages/vendor/VendorInvoicesPage";
@@ -62,6 +63,7 @@ const App = () => (
               <Route index element={<SupplierDashboardPage />} />
               <Route path="orders" element={<SupplierOrdersPage />} />
               <Route path="inventory" element={<SupplierInventoryPage />} />
+              <Route path="vendors" element={<VendorPage />} />
               <Route path="customers" element={<SupplierCustomersPage />} />
               <Route path="payments" element={<SupplierPaymentsPage />} />
               <Route path="settings" element={<SupplierSettingsPage />} />
