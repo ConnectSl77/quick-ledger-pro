@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, CreditCard, Download, FileText, PlusCircle } from 'lucide-react';
+import { getCurrentSupplierId, getSupplierPayments } from '@/integrations/supabase/queries';
+import { useQuery } from '@tanstack/react-query';
+import type { Database } from '@/integrations/supabase/types';
+
+type Payment = Database['public']['Tables']['payments']['Row'];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,95 +36,6 @@ const itemVariants = {
   hidden: { y: 20, opacity: 0 },
   visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
 };
-
-// Sample data for payments received
-const paymentsReceived = [
-  {
-    id: 'PAY-001',
-    customer: 'ACME Trading',
-    date: '2025-04-02',
-    amount: 1250.00,
-    method: 'bank_transfer',
-    status: 'completed',
-    reference: 'INV-0012',
-  },
-  {
-    id: 'PAY-002',
-    customer: 'Global Markets Ltd',
-    date: '2025-04-01',
-    amount: 890.50,
-    method: 'mobile_money',
-    status: 'completed',
-    reference: 'INV-0011',
-  },
-  {
-    id: 'PAY-003',
-    customer: 'Local Store Inc',
-    date: '2025-03-30',
-    amount: 320.75,
-    method: 'cash',
-    status: 'completed',
-    reference: 'INV-0010',
-  },
-  {
-    id: 'PAY-004',
-    customer: 'City Mart',
-    date: '2025-03-28',
-    amount: 1450.00,
-    method: 'mobile_money',
-    status: 'pending',
-    reference: 'INV-0009',
-  },
-  {
-    id: 'PAY-005',
-    customer: 'Fresh Foods Market',
-    date: '2025-03-25',
-    amount: 785.25,
-    method: 'bank_transfer',
-    status: 'failed',
-    reference: 'INV-0008',
-  },
-];
-
-// Sample data for payments made
-const paymentsMade = [
-  {
-    id: 'EXP-001',
-    recipient: 'Rice Supplier Co.',
-    date: '2025-04-01',
-    amount: 2500.00,
-    method: 'bank_transfer',
-    status: 'completed',
-    category: 'Inventory Purchase',
-  },
-  {
-    id: 'EXP-002',
-    recipient: 'Transport Services',
-    date: '2025-03-28',
-    amount: 450.00,
-    method: 'mobile_money',
-    status: 'completed',
-    category: 'Logistics',
-  },
-  {
-    id: 'EXP-003',
-    recipient: 'Packaging Supplies',
-    date: '2025-03-25',
-    amount: 320.75,
-    method: 'cash',
-    status: 'completed',
-    category: 'Supplies',
-  },
-  {
-    id: 'EXP-004',
-    recipient: 'Rent',
-    date: '2025-03-20',
-    amount: 800.00,
-    method: 'bank_transfer',
-    status: 'pending',
-    category: 'Overhead',
-  },
-];
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -149,6 +65,75 @@ const getPaymentMethodLabel = (method: string) => {
 
 const SupplierPayments = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [supplierId, setSupplierId] = useState<string>('');
+  const [filteredPayments, setFilteredPayments] = useState<Payment[]>([]);
+  const [activeTab, setActiveTab] = useState('received');
+
+  // Fetch supplier ID first
+  useEffect(() => {
+    async function fetchSupplierId() {
+      try {
+        const id = await getCurrentSupplierId();
+        setSupplierId(id);
+      } catch (error) {
+        console.error('Error fetching supplier ID:', error);
+      }
+    }
+    
+    fetchSupplierId();
+  }, []);
+
+  // Only fetch payments once we have the supplier ID
+  const { data: paymentsReceived = [], isLoading: receivedLoading } = useQuery({
+    queryKey: ['supplierPaymentsReceived', supplierId],
+    queryFn: () => getSupplierPayments(supplierId, 'received'),
+    enabled: !!supplierId
+  });
+
+  const { data: paymentsMade = [], isLoading: madeLoading } = useQuery({
+    queryKey: ['supplierPaymentsMade', supplierId],
+    queryFn: () => getSupplierPayments(supplierId, 'made'),
+    enabled: !!supplierId
+  });
+
+  const isLoading = receivedLoading || madeLoading || !supplierId;
+
+  // Filter payments based on search query and active tab
+  useEffect(() => {
+    const payments = activeTab === 'received' ? paymentsReceived : paymentsMade;
+    if (payments) {
+      setFilteredPayments(
+        payments.filter(payment => 
+          payment.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          payment.recipient_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          payment.method.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          payment.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          payment.reference?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      );
+    }
+  }, [paymentsReceived, paymentsMade, searchQuery, activeTab]);
+
+  // Calculate payment stats
+  const totalReceived = paymentsReceived
+    .filter(p => p.status === 'completed')
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  
+  const totalSpent = paymentsMade
+    .filter(p => p.status === 'completed')
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  
+  const pendingPayments = [...paymentsReceived, ...paymentsMade]
+    .filter(p => p.status === 'pending')
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -178,10 +163,7 @@ const SupplierPayments = () => {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
-                SLL {paymentsReceived
-                  .filter(p => p.status === 'completed')
-                  .reduce((sum, p) => sum + p.amount, 0)
-                  .toLocaleString()}
+                SLL {totalReceived.toLocaleString()}
               </p>
             </CardContent>
           </Card>
@@ -191,10 +173,7 @@ const SupplierPayments = () => {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
-                SLL {paymentsMade
-                  .filter(p => p.status === 'completed')
-                  .reduce((sum, p) => sum + p.amount, 0)
-                  .toLocaleString()}
+                SLL {totalSpent.toLocaleString()}
               </p>
             </CardContent>
           </Card>
@@ -204,10 +183,7 @@ const SupplierPayments = () => {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-bold">
-                SLL {[...paymentsReceived, ...paymentsMade]
-                  .filter(p => p.status === 'pending')
-                  .reduce((sum, p) => sum + p.amount, 0)
-                  .toLocaleString()}
+                SLL {pendingPayments.toLocaleString()}
               </p>
             </CardContent>
           </Card>
@@ -215,7 +191,7 @@ const SupplierPayments = () => {
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <Tabs defaultValue="received">
+        <Tabs defaultValue="received" onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="received">Payments Received</TabsTrigger>
             <TabsTrigger value="made">Payments Made</TabsTrigger>
@@ -258,27 +234,33 @@ const SupplierPayments = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paymentsReceived.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">{payment.id}</TableCell>
-                          <TableCell>{payment.customer}</TableCell>
-                          <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                          <TableCell>{payment.reference}</TableCell>
-                          <TableCell>{getPaymentMethodLabel(payment.method)}</TableCell>
-                          <TableCell>SLL {payment.amount.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(payment.status)} variant="outline">
-                              {payment.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">
-                              <Download className="h-4 w-4" />
-                              <span className="sr-only">Download</span>
-                            </Button>
-                          </TableCell>
+                      {activeTab === 'received' && filteredPayments.length > 0 ? (
+                        filteredPayments.map((payment) => (
+                          <TableRow key={payment.id}>
+                            <TableCell className="font-medium">{payment.id.substring(0, 8)}</TableCell>
+                            <TableCell>{payment.customer_name || 'N/A'}</TableCell>
+                            <TableCell>{new Date(payment.payment_date || payment.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell>{payment.reference || 'N/A'}</TableCell>
+                            <TableCell>{getPaymentMethodLabel(payment.method)}</TableCell>
+                            <TableCell>SLL {Number(payment.amount).toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(payment.status)} variant="outline">
+                                {payment.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm">
+                                <Download className="h-4 w-4" />
+                                <span className="sr-only">Download</span>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-4">No payment records found</TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -301,6 +283,8 @@ const SupplierPayments = () => {
                     <Input
                       placeholder="Search expenses..."
                       className="pl-8"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
                 </div>
@@ -320,27 +304,33 @@ const SupplierPayments = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {paymentsMade.map((payment) => (
-                        <TableRow key={payment.id}>
-                          <TableCell className="font-medium">{payment.id}</TableCell>
-                          <TableCell>{payment.recipient}</TableCell>
-                          <TableCell>{new Date(payment.date).toLocaleDateString()}</TableCell>
-                          <TableCell>{payment.category}</TableCell>
-                          <TableCell>{getPaymentMethodLabel(payment.method)}</TableCell>
-                          <TableCell>SLL {payment.amount.toLocaleString()}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(payment.status)} variant="outline">
-                              {payment.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">
-                              <Download className="h-4 w-4" />
-                              <span className="sr-only">Download</span>
-                            </Button>
-                          </TableCell>
+                      {activeTab === 'made' && filteredPayments.length > 0 ? (
+                        filteredPayments.map((payment) => (
+                          <TableRow key={payment.id}>
+                            <TableCell className="font-medium">{payment.id.substring(0, 8)}</TableCell>
+                            <TableCell>{payment.recipient_name || 'N/A'}</TableCell>
+                            <TableCell>{new Date(payment.payment_date || payment.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell>{payment.category || 'N/A'}</TableCell>
+                            <TableCell>{getPaymentMethodLabel(payment.method)}</TableCell>
+                            <TableCell>SLL {Number(payment.amount).toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(payment.status)} variant="outline">
+                                {payment.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm">
+                                <Download className="h-4 w-4" />
+                                <span className="sr-only">Download</span>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-4">No payment records found</TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </div>

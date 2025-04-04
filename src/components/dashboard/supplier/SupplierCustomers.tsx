@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -15,6 +15,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Plus, Phone, Mail, MapPin, MoreHorizontal } from 'lucide-react';
+import { getCurrentSupplierId, getSupplierCustomers } from '@/integrations/supabase/queries';
+import { useQuery } from '@tanstack/react-query';
+import type { Database } from '@/integrations/supabase/types';
+
+type Customer = Database['public']['Tables']['customers']['Row'];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,65 +36,6 @@ const itemVariants = {
   hidden: { y: 20, opacity: 0 },
   visible: { y: 0, opacity: 1, transition: { duration: 0.5 } },
 };
-
-// Sample data for customers
-const customers = [
-  {
-    id: 'C001',
-    name: 'ACME Trading',
-    contact: 'John Smith',
-    email: 'john@acmetrading.com',
-    phone: '+232 76 123 4567',
-    location: 'Freetown',
-    status: 'active',
-    totalOrders: 12,
-    totalSpent: 3450.50,
-  },
-  {
-    id: 'C002',
-    name: 'Global Markets Ltd',
-    contact: 'Sarah Jones',
-    email: 'sarah@globalmarkets.com',
-    phone: '+232 77 234 5678',
-    location: 'Bo',
-    status: 'active',
-    totalOrders: 8,
-    totalSpent: 2120.75,
-  },
-  {
-    id: 'C003',
-    name: 'Local Store Inc',
-    contact: 'Michael Brown',
-    email: 'michael@localstore.com',
-    phone: '+232 78 345 6789',
-    location: 'Kenema',
-    status: 'inactive',
-    totalOrders: 3,
-    totalSpent: 580.25,
-  },
-  {
-    id: 'C004',
-    name: 'City Mart',
-    contact: 'Lisa Chen',
-    email: 'lisa@citymart.com',
-    phone: '+232 79 456 7890',
-    location: 'Makeni',
-    status: 'active',
-    totalOrders: 15,
-    totalSpent: 4320.00,
-  },
-  {
-    id: 'C005',
-    name: 'Fresh Foods Market',
-    contact: 'David Wilson',
-    email: 'david@freshfoods.com',
-    phone: '+232 30 567 8901',
-    location: 'Freetown',
-    status: 'active',
-    totalOrders: 6,
-    totalSpent: 1250.50,
-  },
-];
 
 const getCustomerStatusColor = (status: string) => {
   switch (status) {
@@ -108,6 +54,55 @@ const getInitials = (name: string) => {
 
 const SupplierCustomers = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [supplierId, setSupplierId] = useState<string>('');
+  const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
+
+  // Fetch supplier ID first
+  useEffect(() => {
+    async function fetchSupplierId() {
+      try {
+        const id = await getCurrentSupplierId();
+        setSupplierId(id);
+      } catch (error) {
+        console.error('Error fetching supplier ID:', error);
+      }
+    }
+    
+    fetchSupplierId();
+  }, []);
+
+  // Only fetch customers once we have the supplier ID
+  const { data: customers = [], isLoading } = useQuery({
+    queryKey: ['supplierCustomers', supplierId],
+    queryFn: () => getSupplierCustomers(supplierId),
+    enabled: !!supplierId
+  });
+
+  // Filter customers based on search query
+  useEffect(() => {
+    if (customers) {
+      setFilteredCustomers(
+        customers.filter(customer => 
+          customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          customer.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          customer.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          customer.contact?.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      );
+    }
+  }, [customers, searchQuery]);
+
+  // Calculate customer stats
+  const activeCustomers = customers.filter(c => c.status === 'active').length;
+  const totalSpent = customers.reduce((sum, c) => sum + Number(c.total_spent || 0), 0);
+
+  if (isLoading || !supplierId) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -144,7 +139,7 @@ const SupplierCustomers = () => {
               <CardTitle className="text-sm font-medium text-muted-foreground">Active Customers</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{customers.filter(c => c.status === 'active').length}</p>
+              <p className="text-2xl font-bold">{activeCustomers}</p>
             </CardContent>
           </Card>
           <Card>
@@ -152,7 +147,7 @@ const SupplierCustomers = () => {
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">SLL {customers.reduce((sum, c) => sum + c.totalSpent, 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold">SLL {totalSpent.toLocaleString()}</p>
             </CardContent>
           </Card>
         </div>
@@ -193,52 +188,58 @@ const SupplierCustomers = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {customers.map((customer) => (
-                    <TableRow key={customer.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <Avatar>
-                            <AvatarFallback>{getInitials(customer.name)}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">{customer.name}</div>
-                            <div className="text-sm text-muted-foreground">{customer.contact}</div>
+                  {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((customer) => (
+                      <TableRow key={customer.id}>
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <Avatar>
+                              <AvatarFallback>{getInitials(customer.name)}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{customer.name}</div>
+                              <div className="text-sm text-muted-foreground">{customer.contact}</div>
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm">
-                            <Mail className="mr-1 h-3 w-3 text-muted-foreground" />
-                            {customer.email}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center text-sm">
+                              <Mail className="mr-1 h-3 w-3 text-muted-foreground" />
+                              {customer.email}
+                            </div>
+                            <div className="flex items-center text-sm">
+                              <Phone className="mr-1 h-3 w-3 text-muted-foreground" />
+                              {customer.phone || 'N/A'}
+                            </div>
                           </div>
-                          <div className="flex items-center text-sm">
-                            <Phone className="mr-1 h-3 w-3 text-muted-foreground" />
-                            {customer.phone}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <MapPin className="mr-1 h-4 w-4 text-muted-foreground" />
+                            {customer.location || 'N/A'}
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <MapPin className="mr-1 h-4 w-4 text-muted-foreground" />
-                          {customer.location}
-                        </div>
-                      </TableCell>
-                      <TableCell>{customer.totalOrders}</TableCell>
-                      <TableCell>SLL {customer.totalSpent.toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Badge className={getCustomerStatusColor(customer.status)} variant="outline">
-                          {customer.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">More</span>
-                        </Button>
-                      </TableCell>
+                        </TableCell>
+                        <TableCell>{customer.total_orders || 0}</TableCell>
+                        <TableCell>SLL {Number(customer.total_spent || 0).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge className={getCustomerStatusColor(customer.status || '')} variant="outline">
+                            {customer.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">More</span>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-4">No customers found</TableCell>
                     </TableRow>
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>

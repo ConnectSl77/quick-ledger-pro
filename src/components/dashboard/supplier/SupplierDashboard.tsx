@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ArrowUpRight, DollarSign, Package, Users, ShoppingBag, Truck } from 'lucide-react';
-import { getSupplierStats, getMonthlyStats, getCustomerDistribution } from '@/integrations/supabase/queries';
+import { getSupplierStats, getMonthlyStats, getCustomerDistribution, getCurrentSupplierId } from '@/integrations/supabase/queries';
+import { useQuery } from '@tanstack/react-query';
 import type { Database } from '@/integrations/supabase/types';
 
 type Order = Database['public']['Tables']['orders']['Row'];
@@ -27,41 +29,44 @@ const itemVariants = {
 };
 
 const SupplierDashboard = () => {
-  const [stats, setStats] = useState({
-    totalRevenue: 0,
-    totalProducts: 0,
-    totalOrders: 0,
-    recentOrders: [],
-  });
-  const [orderData, setOrderData] = useState([]);
-  const [customerData, setCustomerData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [supplierId, setSupplierId] = useState<string>('');
 
+  // Fetch supplier ID first
   useEffect(() => {
-    const fetchData = async () => {
+    async function fetchSupplierId() {
       try {
-        // Replace 'supplier-id' with the actual supplier ID from your auth system
-        const supplierId = 'supplier-id';
-        const [statsData, monthlyData, customerDistributionData] = await Promise.all([
-          getSupplierStats(supplierId),
-          getMonthlyStats(supplierId, false),
-          getCustomerDistribution(supplierId, false),
-        ]);
-
-        setStats(statsData);
-        setOrderData(monthlyData);
-        setCustomerData(customerDistributionData);
+        const id = await getCurrentSupplierId();
+        setSupplierId(id);
       } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
+        console.error('Error fetching supplier ID:', error);
       }
-    };
-
-    fetchData();
+    }
+    
+    fetchSupplierId();
   }, []);
 
-  const statsCards = [
+  // Only fetch data once we have the supplier ID
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['supplierStats', supplierId],
+    queryFn: () => getSupplierStats(supplierId),
+    enabled: !!supplierId
+  });
+
+  const { data: orderData, isLoading: orderDataLoading } = useQuery({
+    queryKey: ['monthlyStats', supplierId],
+    queryFn: () => getMonthlyStats(supplierId, false),
+    enabled: !!supplierId
+  });
+
+  const { data: customerData, isLoading: customerDataLoading } = useQuery({
+    queryKey: ['customerDistribution', supplierId],
+    queryFn: () => getCustomerDistribution(supplierId, false),
+    enabled: !!supplierId
+  });
+
+  const isLoading = statsLoading || orderDataLoading || customerDataLoading || !supplierId;
+
+  const statsCards = stats ? [
     { 
       title: 'Total Revenue', 
       value: `SLL ${stats.totalRevenue.toLocaleString()}`, 
@@ -80,7 +85,7 @@ const SupplierDashboard = () => {
     },
     { 
       title: 'Customers', 
-      value: stats.recentOrders.length.toString(), 
+      value: (customerData?.length || 0).toString(), 
       change: '+8%', 
       icon: Users,
       description: 'Active customers',
@@ -94,9 +99,9 @@ const SupplierDashboard = () => {
       description: 'Total orders',
       color: 'amber',
     },
-  ];
+  ] : [];
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
@@ -193,7 +198,7 @@ const SupplierDashboard = () => {
                     dataKey="value"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {customerData.map((entry, index) => (
+                    {customerData?.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -228,13 +233,13 @@ const SupplierDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.recentOrders.map((order: Order) => (
+                  {stats?.recentOrders.map((order: Order) => (
                     <tr 
                       key={order.id} 
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
                       <td className="p-4">{order.customer_name}</td>
-                      <td className="p-4 font-medium">SLL {order.amount.toLocaleString()}</td>
+                      <td className="p-4 font-medium">SLL {Number(order.amount).toLocaleString()}</td>
                       <td className="p-4 text-muted-foreground">
                         {new Date(order.created_at).toLocaleDateString()}
                       </td>
@@ -242,6 +247,7 @@ const SupplierDashboard = () => {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           order.status === 'delivered' ? 'bg-green-100 text-green-800' : 
                           order.status === 'shipped' ? 'bg-blue-100 text-blue-800' : 
+                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
                           {order.status}
