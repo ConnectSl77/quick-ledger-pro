@@ -1,4 +1,3 @@
-import React from 'react';
 import ForgotPasswordForm from '@/components/auth/ForgotPasswordForm';
 import Navbar from '@/components/landing/Navbar';
 
