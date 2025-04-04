@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -14,6 +13,8 @@ import {
   CreditCard,
   ChevronRight,
   Menu,
+  ShoppingBag,
+  BarChart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -42,13 +43,22 @@ const Sidebar = ({ collapsed, toggleSidebar }: SidebarProps) => {
     { href: `/dashboard/supplier`, label: 'Dashboard', icon: LayoutDashboard },
     { href: `/dashboard/supplier/orders`, label: 'Orders', icon: ShoppingCart },
     { href: `/dashboard/supplier/inventory`, label: 'Inventory', icon: Package },
-    { href: `/dashboard/supplier/customers`, label: 'Customers', icon: Users },
+    { href: `/dashboard/supplier/vendors`, label: 'Vendors', icon: Users },
     { href: `/dashboard/supplier/payments`, label: 'Payments', icon: CreditCard },
     { href: `/dashboard/supplier/settings`, label: 'Settings', icon: Settings },
   ];
   
   const links = isVendor ? vendorLinks : supplierLinks;
   const accentColor = isVendor ? 'vendor' : 'supplier';
+
+  const navigationItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Products', href: '/products', icon: Package },
+    { name: 'Vendors', href: '/vendors', icon: Users },
+    { name: 'Orders', href: '/orders', icon: ShoppingBag },
+    { name: 'Reports', href: '/reports', icon: BarChart },
+    { name: 'Settings', href: '/settings', icon: Settings },
+  ];
 
   return (
     <motion.div 

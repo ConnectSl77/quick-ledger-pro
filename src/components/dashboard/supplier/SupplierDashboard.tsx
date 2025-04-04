@@ -79,11 +79,11 @@ const SupplierDashboard = () => {
       color: 'blue',
     },
     { 
-      title: 'Customers', 
+      title: 'Vendors', 
       value: stats.recentOrders.length.toString(), 
       change: '+8%', 
       icon: Users,
-      description: 'Active customers',
+      description: 'Active vendors',
       color: 'indigo',
     },
     { 
@@ -211,7 +211,7 @@ const SupplierDashboard = () => {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle>Recent Orders</CardTitle>
-                <CardDescription>Latest customer orders</CardDescription>
+                <CardDescription>Latest vendor orders</CardDescription>
               </div>
               <Truck className="h-5 w-5 text-gray-500" />
             </div>
@@ -221,7 +221,7 @@ const SupplierDashboard = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b text-sm text-muted-foreground">
-                    <th className="p-4 text-left">Customer</th>
+                    <th className="p-4 text-left">Vendor</th>
                     <th className="p-4 text-left">Amount</th>
                     <th className="p-4 text-left">Date</th>
                     <th className="p-4 text-left">Status</th>
@@ -233,7 +233,7 @@ const SupplierDashboard = () => {
                       key={order.id} 
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
-                      <td className="p-4">{order.customer_name}</td>
+                      <td className="p-4">{order.vendor_name}</td>
                       <td className="p-4 font-medium">SLL {order.amount.toLocaleString()}</td>
                       <td className="p-4 text-muted-foreground">
                         {new Date(order.created_at).toLocaleDateString()}
