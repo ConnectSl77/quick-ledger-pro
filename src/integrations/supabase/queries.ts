@@ -8,6 +8,13 @@ type Product = Database['public']['Tables']['products']['Row'];
 type Order = Database['public']['Tables']['orders']['Row'];
 type Customer = Database['public']['Tables']['customers']['Row'];
 type Payment = Database['public']['Tables']['payments']['Row'];
+type Message = {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  content: string;
+  created_at: string;
+};
 
 // Temporary function to get a supplier ID (will be replaced with auth)
 export async function getCurrentSupplierId(): Promise<string> {
@@ -177,14 +184,15 @@ export async function getSupplierPayments(supplierId: string, paymentType?: stri
 
 // New functions for messages
 export async function createMessage(senderId: string, receiverId: string, content: string) {
-  const { error } = await supabase.from('messages').insert({
-    sender_id: senderId,
-    receiver_id: receiverId,
-    content,
-  });
+  const { error } = await supabase
+    .rpc('insert_message', {
+      p_sender_id: senderId,
+      p_receiver_id: receiverId,
+      p_content: content
+    });
 
   if (error) {
-    throw new Error('Failed to send message');
+    throw new Error(`Failed to send message: ${error.message}`);
   }
 }
 
@@ -193,7 +201,7 @@ export async function getConversations(userId: string) {
     .rpc('get_conversations', { user_id: userId });
 
   if (error) {
-    throw new Error('Failed to fetch conversations');
+    throw new Error(`Failed to fetch conversations: ${error.message}`);
   }
 
   return data || [];
@@ -208,7 +216,7 @@ export async function getMessages(userId: string, otherUserId: string) {
     .order('created_at', { ascending: true });
 
   if (error) {
-    throw new Error('Failed to fetch messages');
+    throw new Error(`Failed to fetch messages: ${error.message}`);
   }
 
   return data || [];

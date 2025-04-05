@@ -1,13 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Send, User } from "lucide-react";
-import { getCurrentSupplierId } from '@/integrations/supabase/queries';
+import { getCurrentSupplierId, getConversations, getMessages, createMessage } from '@/integrations/supabase/queries';
 import { useToast } from '@/hooks/use-toast';
 
 interface MessagePanelProps {
@@ -15,78 +14,115 @@ interface MessagePanelProps {
 }
 
 interface Conversation {
-  id: string;
-  name: string;
-  lastMessage: string;
-  time: string;
+  conversation_id: string;
+  user_name: string;
+  last_message: string;
+  last_message_time: string;
 }
 
 interface Message {
   id: string;
   sender_id: string;
+  receiver_id: string;
   content: string;
-  timestamp: string;
+  created_at: string;
 }
 
 const MessagePanel = ({ userType }: MessagePanelProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   
-  // In a real app, we would fetch these from the API
-  const conversations: Conversation[] = [
-    {
-      id: '1',
-      name: userType === 'supplier' ? 'Freetown Grocery Mart' : 'Sierra Leone Distributors',
-      lastMessage: 'We need to discuss the latest order',
-      time: '10:30 AM'
+  useEffect(() => {
+    const fetchCurrentUserId = async () => {
+      try {
+        // In a real app, this would come from authentication
+        const id = await getCurrentSupplierId();
+        setCurrentUserId(id);
+      } catch (error) {
+        console.error("Error fetching current user ID:", error);
+      }
+    };
+    
+    fetchCurrentUserId();
+  }, []);
+  
+  // Fetch conversations
+  const { data: conversations = [], isLoading: isLoadingConversations } = useQuery({
+    queryKey: ['conversations', currentUserId],
+    queryFn: () => getConversations(currentUserId),
+    enabled: !!currentUserId,
+  });
+  
+  // Fetch messages for the active conversation
+  const { data: messages = [], isLoading: isLoadingMessages } = useQuery({
+    queryKey: ['messages', currentUserId, activeConversation],
+    queryFn: () => getMessages(currentUserId, activeConversation || ""),
+    enabled: !!currentUserId && !!activeConversation,
+  });
+  
+  // Create message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: ({ senderId, receiverId, content }: { senderId: string; receiverId: string; content: string }) =>
+      createMessage(senderId, receiverId, content),
+    onSuccess: () => {
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ['messages', currentUserId, activeConversation] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', currentUserId] });
+      
+      toast({
+        title: "Message Sent",
+        description: "Your message has been delivered.",
+      });
+      
+      setMessage("");
     },
-    {
-      id: '2',
-      name: userType === 'supplier' ? 'Central Market Store' : 'Makeni Supplies Ltd',
-      lastMessage: 'When can we expect delivery?',
-      time: '9:45 AM'
-    },
-    {
-      id: '3',
-      name: userType === 'supplier' ? 'Bo City Supermarket' : 'Kenema Products Co',
-      lastMessage: 'Price inquiry for bulk orders',
-      time: 'Yesterday'
+    onError: (error) => {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Message Failed",
+        description: "Failed to send your message. Please try again.",
+        variant: "destructive",
+      });
     }
-  ];
-  
-  // Sample messages for demo
-  const messages: Record<string, Message[]> = {
-    '1': [
-      { id: '101', sender_id: 'supplier-1', content: 'Hello, I wanted to check on our latest order status', timestamp: '10:15 AM' },
-      { id: '102', sender_id: 'vendor-1', content: 'Hi there! The order is being processed and will ship by tomorrow', timestamp: '10:20 AM' },
-      { id: '103', sender_id: 'supplier-1', content: 'Great, thank you for the update!', timestamp: '10:30 AM' },
-    ],
-    '2': [
-      { id: '201', sender_id: 'supplier-1', content: 'When can we expect the next delivery?', timestamp: '9:30 AM' },
-      { id: '202', sender_id: 'vendor-2', content: 'We are scheduling deliveries for next Tuesday', timestamp: '9:45 AM' },
-    ],
-    '3': [
-      { id: '301', sender_id: 'vendor-3', content: 'I wanted to inquire about bulk pricing for rice and flour', timestamp: 'Yesterday' },
-      { id: '302', sender_id: 'supplier-1', content: 'For orders over 20 bags, we offer a 15% discount', timestamp: 'Yesterday' },
-    ]
-  };
+  });
   
   const isCurrentUser = (senderId: string): boolean => {
-    // In real app, compare with actual user ID
-    return userType === 'supplier' ? senderId.startsWith('supplier') : senderId.startsWith('vendor');
+    return senderId === currentUserId;
   };
 
   const handleSend = () => {
-    if (!message.trim() || !activeConversation) return;
+    if (!message.trim() || !activeConversation || !currentUserId) return;
     
-    // In a real app, we would send this to the API
-    toast({
-      title: "Message Sent",
-      description: "Your message has been delivered.",
+    sendMessageMutation.mutate({
+      senderId: currentUserId,
+      receiverId: activeConversation,
+      content: message
     });
-    
-    setMessage("");
+  };
+  
+  // Use dummy data if no real data is available yet
+  const displayConversations = conversations.length > 0 ? conversations : [
+    {
+      conversation_id: '1',
+      user_name: userType === 'supplier' ? 'Freetown Grocery Mart' : 'Sierra Leone Distributors',
+      last_message: 'We need to discuss the latest order',
+      last_message_time: new Date().toISOString()
+    },
+    {
+      conversation_id: '2',
+      user_name: userType === 'supplier' ? 'Central Market Store' : 'Makeni Supplies Ltd',
+      last_message: 'When can we expect delivery?',
+      last_message_time: new Date(Date.now() - 3600000).toISOString()
+    }
+  ];
+  
+  // Format timestamp to readable format
+  const formatTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   return (
@@ -97,26 +133,32 @@ const MessagePanel = ({ userType }: MessagePanelProps) => {
       <CardContent className="p-0">
         {!activeConversation ? (
           <div className="max-h-60 overflow-y-auto">
-            {conversations.map((convo) => (
-              <div 
-                key={convo.id} 
-                className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 border-t first:border-t-0"
-                onClick={() => setActiveConversation(convo.id)}
-              >
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>
-                    <User size={16} />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="ml-2 flex-1 overflow-hidden">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium truncate">{convo.name}</span>
-                    <span className="text-xs text-gray-500">{convo.time}</span>
+            {isLoadingConversations ? (
+              <div className="flex justify-center p-4">Loading conversations...</div>
+            ) : displayConversations.length === 0 ? (
+              <div className="flex justify-center p-4">No conversations yet</div>
+            ) : (
+              displayConversations.map((convo) => (
+                <div 
+                  key={convo.conversation_id} 
+                  className="flex items-center px-3 py-2 cursor-pointer hover:bg-gray-50 border-t first:border-t-0"
+                  onClick={() => setActiveConversation(convo.conversation_id)}
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      <User size={16} />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="ml-2 flex-1 overflow-hidden">
+                    <div className="flex justify-between">
+                      <span className="text-sm font-medium truncate">{convo.user_name}</span>
+                      <span className="text-xs text-gray-500">{formatTime(convo.last_message_time)}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 truncate">{convo.last_message}</p>
                   </div>
-                  <p className="text-xs text-gray-500 truncate">{convo.lastMessage}</p>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         ) : (
           <div className="flex flex-col h-60">
@@ -130,27 +172,37 @@ const MessagePanel = ({ userType }: MessagePanelProps) => {
                 &larr;
               </Button>
               <span className="text-sm font-medium">
-                {conversations.find(c => c.id === activeConversation)?.name}
+                {displayConversations.find(c => c.conversation_id === activeConversation)?.user_name || "Chat"}
               </span>
             </div>
             <div className="flex-1 overflow-y-auto p-3 space-y-3">
-              {messages[activeConversation]?.map((msg) => (
-                <div 
-                  key={msg.id} 
-                  className={`flex ${isCurrentUser(msg.sender_id) ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div 
-                    className={`max-w-[80%] p-2 rounded-lg ${
-                      isCurrentUser(msg.sender_id) 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-gray-100 text-gray-800'
-                    }`}
-                  >
-                    <p className="text-sm">{msg.content}</p>
-                    <span className="text-xs opacity-70 block text-right">{msg.timestamp}</span>
-                  </div>
+              {isLoadingMessages ? (
+                <div className="flex justify-center p-4">Loading messages...</div>
+              ) : messages.length === 0 ? (
+                <div className="flex justify-center p-4 text-gray-500 text-sm">
+                  No messages yet. Start the conversation!
                 </div>
-              ))}
+              ) : (
+                messages.map((msg) => (
+                  <div 
+                    key={msg.id} 
+                    className={`flex ${isCurrentUser(msg.sender_id) ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div 
+                      className={`max-w-[80%] p-2 rounded-lg ${
+                        isCurrentUser(msg.sender_id) 
+                          ? 'bg-blue-500 text-white' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
+                      <p className="text-sm">{msg.content}</p>
+                      <span className="text-xs opacity-70 block text-right">
+                        {formatTime(msg.created_at)}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
             <div className="p-3 border-t flex">
               <Input 
@@ -159,8 +211,13 @@ const MessagePanel = ({ userType }: MessagePanelProps) => {
                 placeholder="Type a message..."
                 className="flex-1 mr-2"
                 onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                disabled={sendMessageMutation.isPending}
               />
-              <Button size="icon" onClick={handleSend}>
+              <Button 
+                size="icon" 
+                onClick={handleSend}
+                disabled={sendMessageMutation.isPending || !message.trim()}
+              >
                 <Send size={16} />
               </Button>
             </div>

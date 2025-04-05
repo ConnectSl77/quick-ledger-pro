@@ -1,11 +1,8 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { createClient, User } from '@supabase/supabase-js';
-import { useNavigate } from 'react-router-dom';
 
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SupabaseContextType {
   user: User | null;
@@ -86,4 +83,4 @@ export const useSupabase = () => {
     throw new Error('useSupabase must be used within a SupabaseProvider');
   }
   return context;
-}; 
+};
