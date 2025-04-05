@@ -1,13 +1,6 @@
-
 import { supabase } from './client';
-import type { Database } from './types';
 
-type Vendor = Database['public']['Tables']['vendors']['Row'];
-type Supplier = Database['public']['Tables']['suppliers']['Row'];
-type Product = Database['public']['Tables']['products']['Row'];
-type Order = Database['public']['Tables']['orders']['Row'];
-type Customer = Database['public']['Tables']['customers']['Row'];
-type Payment = Database['public']['Tables']['payments']['Row'];
+// Define types for database operations
 type Message = {
   id: string;
   sender_id: string;
@@ -16,90 +9,146 @@ type Message = {
   created_at: string;
 };
 
-// Temporary function to get a supplier ID (will be replaced with auth)
-export async function getCurrentSupplierId(): Promise<string> {
-  // In a real app, this would come from authentication
-  const { data } = await supabase.from('suppliers').select('id').limit(1);
-  return data?.[0]?.id || '';
+// Functions for messages
+export async function createMessage(senderId: string, receiverId: string, content: string) {
+  try {
+    await supabase.rpc('insert_message', {
+      p_sender_id: senderId,
+      p_receiver_id: receiverId,
+      p_content: content
+    });
+  } catch (error) {
+    console.error('Error creating message:', error);
+    throw new Error('Failed to send message');
+  }
 }
 
+export async function getConversations(userId: string) {
+  try {
+    const { data, error } = await supabase.rpc('get_conversations', { 
+      user_id: userId 
+    });
+
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error getting conversations:', error);
+    throw new Error('Failed to fetch conversations');
+  }
+}
+
+export async function getMessages(userId: string, otherUserId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+      .or(`sender_id.eq.${otherUserId},receiver_id.eq.${otherUserId}`)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    return data as Message[];
+  } catch (error) {
+    console.error('Error getting messages:', error);
+    throw new Error('Failed to fetch messages');
+  }
+}
+
+// Stats and metrics
 export async function getVendorStats(vendorId: string) {
-  const { data: products, error: productsError } = await supabase
-    .from('products')
-    .select('*')
-    .eq('vendor_id', vendorId);
+  try {
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('vendor_id', vendorId);
 
-  const { data: orders, error: ordersError } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('vendor_id', vendorId);
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('vendor_id', vendorId);
 
-  if (productsError || ordersError) {
+    if (productsError || ordersError) {
+      throw new Error('Failed to fetch vendor stats');
+    }
+
+    const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.amount), 0) || 0;
+    const totalProducts = products?.length || 0;
+    const totalOrders = orders?.length || 0;
+    const recentOrders = orders?.slice(0, 4) || [];
+
+    return {
+      totalRevenue,
+      totalProducts,
+      totalOrders,
+      recentOrders,
+    };
+  } catch (error) {
+    console.error('Error getting vendor stats:', error);
     throw new Error('Failed to fetch vendor stats');
   }
-
-  const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.amount), 0) || 0;
-  const totalProducts = products?.length || 0;
-  const totalOrders = orders?.length || 0;
-  const recentOrders = orders?.slice(0, 4) || [];
-
-  return {
-    totalRevenue,
-    totalProducts,
-    totalOrders,
-    recentOrders,
-  };
 }
 
 export async function getSupplierStats(supplierId: string) {
-  const { data: products, error: productsError } = await supabase
-    .from('products')
-    .select('*')
-    .eq('supplier_id', supplierId);
+  try {
+    const { data: products, error: productsError } = await supabase
+      .from('products')
+      .select('*')
+      .eq('supplier_id', supplierId);
 
-  const { data: orders, error: ordersError } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('supplier_id', supplierId);
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('supplier_id', supplierId);
 
-  if (productsError || ordersError) {
+    if (productsError || ordersError) {
+      throw new Error('Failed to fetch supplier stats');
+    }
+
+    const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.amount), 0) || 0;
+    const totalProducts = products?.length || 0;
+    const totalOrders = orders?.length || 0;
+    const recentOrders = orders?.slice(0, 4) || [];
+
+    return {
+      totalRevenue,
+      totalProducts,
+      totalOrders,
+      recentOrders,
+    };
+  } catch (error) {
+    console.error('Error getting supplier stats:', error);
     throw new Error('Failed to fetch supplier stats');
   }
-
-  const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.amount), 0) || 0;
-  const totalProducts = products?.length || 0;
-  const totalOrders = orders?.length || 0;
-  const recentOrders = orders?.slice(0, 4) || [];
-
-  return {
-    totalRevenue,
-    totalProducts,
-    totalOrders,
-    recentOrders,
-  };
 }
 
 export async function getMonthlyStats(userId: string, isVendor: boolean) {
-  const { data: orders, error } = await supabase
-    .from('orders')
-    .select('*')
-    .eq(isVendor ? 'vendor_id' : 'supplier_id', userId);
+  try {
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq(isVendor ? 'vendor_id' : 'supplier_id', userId);
 
-  if (error) {
+    if (error) {
+      throw error;
+    }
+
+    const monthlyData = orders?.reduce((acc, order) => {
+      if (order.created_at) {
+        const date = new Date(order.created_at);
+        const month = date.toLocaleString('default', { month: 'short' });
+        acc[month] = (acc[month] || 0) + Number(order.amount);
+      }
+      return acc;
+    }, {} as Record<string, number>) || {};
+
+    return Object.entries(monthlyData).map(([name, amount]) => ({
+      name,
+      amount,
+    }));
+  } catch (error) {
+    console.error('Error getting monthly stats:', error);
     throw new Error('Failed to fetch monthly stats');
   }
-
-  const monthlyData = orders?.reduce((acc, order) => {
-    const date = new Date(order.created_at);
-    const month = date.toLocaleString('default', { month: 'short' });
-    acc[month] = (acc[month] || 0) + Number(order.amount);
-    return acc;
-  }, {} as Record<string, number>) || {};
-
-  return Object.entries(monthlyData).map(([name, amount]) => ({
-    name,
-    amount,
-  }));
 }
 
 export async function getCustomerDistribution(userId: string, isVendor: boolean) {
@@ -177,46 +226,6 @@ export async function getSupplierPayments(supplierId: string, paymentType?: stri
 
   if (error) {
     throw new Error('Failed to fetch supplier payments');
-  }
-
-  return data || [];
-}
-
-// New functions for messages
-export async function createMessage(senderId: string, receiverId: string, content: string) {
-  const { error } = await supabase
-    .rpc('insert_message', {
-      p_sender_id: senderId,
-      p_receiver_id: receiverId,
-      p_content: content
-    });
-
-  if (error) {
-    throw new Error(`Failed to send message: ${error.message}`);
-  }
-}
-
-export async function getConversations(userId: string) {
-  const { data, error } = await supabase
-    .rpc('get_conversations', { user_id: userId });
-
-  if (error) {
-    throw new Error(`Failed to fetch conversations: ${error.message}`);
-  }
-
-  return data || [];
-}
-
-export async function getMessages(userId: string, otherUserId: string) {
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-    .or(`sender_id.eq.${otherUserId},receiver_id.eq.${otherUserId}`)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    throw new Error(`Failed to fetch messages: ${error.message}`);
   }
 
   return data || [];

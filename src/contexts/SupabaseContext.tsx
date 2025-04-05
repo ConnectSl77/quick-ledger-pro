@@ -28,10 +28,10 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchUserType(session.user.id);
+        fetchUserType(session.user.id);
       } else {
         setUserType(null);
         navigate('/login');
@@ -52,7 +52,10 @@ export const SupabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         .single();
 
       if (error) throw error;
-      setUserType(data.user_type);
+      
+      if (data && typeof data.user_type === 'string') {
+        setUserType(data.user_type as 'vendor' | 'supplier');
+      }
     } catch (error) {
       console.error('Error fetching user type:', error);
       setUserType(null);
