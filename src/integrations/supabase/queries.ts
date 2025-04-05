@@ -1,244 +1,69 @@
-
 import { supabase } from './client';
+import { User } from '@supabase/supabase-js';
 
-// Define types for database operations
-type Message = {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  content: string;
-  created_at: string;
+// Get the current user
+export const getCurrentUser = async (): Promise<User | null> => {
+  const { data, error } = await supabase.auth.getUser();
+  
+  if (error) {
+    throw error;
+  }
+  
+  return data?.user || null;
 };
 
-// Mock function to get current supplier ID (in a real app, this would come from authentication)
-export async function getCurrentSupplierId() {
-  // This is a placeholder. In a production app, this would get the ID from the authenticated user
-  return "38aaa495-9d0e-4ead-9996-2b2e92f45ec2"; // Example supplier ID
-}
-
-// Functions for messages
-export async function createMessage(senderId: string, receiverId: string, content: string) {
-  try {
-    // Using normal insert instead of RPC to avoid TS errors
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        sender_id: senderId,
-        receiver_id: receiverId,
-        content: content
-      });
-      
-    if (error) throw error;
-  } catch (error) {
-    console.error('Error creating message:', error);
-    throw new Error('Failed to send message');
+// Get the current supplier ID
+export const getCurrentSupplierId = async (): Promise<string> => {
+  const user = await getCurrentUser();
+  
+  if (!user) {
+    throw new Error('No authenticated user found');
   }
-}
-
-export async function getConversations(userId: string) {
-  try {
-    const { data, error } = await supabase.rpc('get_conversations', { 
-      user_id: userId 
-    });
-
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    console.error('Error getting conversations:', error);
-    throw new Error('Failed to fetch conversations');
-  }
-}
-
-export async function getMessages(userId: string, otherUserId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .or(`sender_id.eq.${otherUserId},receiver_id.eq.${otherUserId}`)
-      .order('created_at', { ascending: true });
-
-    if (error) throw error;
-    return data as Message[];
-  } catch (error) {
-    console.error('Error getting messages:', error);
-    throw new Error('Failed to fetch messages');
-  }
-}
-
-// Stats and metrics
-export async function getVendorStats(vendorId: string) {
-  try {
-    const { data: products, error: productsError } = await supabase
-      .from('products')
-      .select('*')
-      .eq('vendor_id', vendorId);
-
-    const { data: orders, error: ordersError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('vendor_id', vendorId);
-
-    if (productsError || ordersError) {
-      throw new Error('Failed to fetch vendor stats');
-    }
-
-    const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.amount), 0) || 0;
-    const totalProducts = products?.length || 0;
-    const totalOrders = orders?.length || 0;
-    const recentOrders = orders?.slice(0, 4) || [];
-
-    return {
-      totalRevenue,
-      totalProducts,
-      totalOrders,
-      recentOrders,
-    };
-  } catch (error) {
-    console.error('Error getting vendor stats:', error);
-    throw new Error('Failed to fetch vendor stats');
-  }
-}
-
-export async function getSupplierStats(supplierId: string) {
-  try {
-    const { data: products, error: productsError } = await supabase
-      .from('products')
-      .select('*')
-      .eq('supplier_id', supplierId);
-
-    const { data: orders, error: ordersError } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('supplier_id', supplierId);
-
-    if (productsError || ordersError) {
-      throw new Error('Failed to fetch supplier stats');
-    }
-
-    const totalRevenue = orders?.reduce((sum, order) => sum + Number(order.amount), 0) || 0;
-    const totalProducts = products?.length || 0;
-    const totalOrders = orders?.length || 0;
-    const recentOrders = orders?.slice(0, 4) || [];
-
-    return {
-      totalRevenue,
-      totalProducts,
-      totalOrders,
-      recentOrders,
-    };
-  } catch (error) {
-    console.error('Error getting supplier stats:', error);
-    throw new Error('Failed to fetch supplier stats');
-  }
-}
-
-export async function getMonthlyStats(userId: string, isVendor: boolean) {
-  try {
-    const { data: orders, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq(isVendor ? 'vendor_id' : 'supplier_id', userId);
-
-    if (error) {
-      throw error;
-    }
-
-    const monthlyData = orders?.reduce((acc, order) => {
-      if (order.created_at) {
-        const date = new Date(order.created_at);
-        const month = date.toLocaleString('default', { month: 'short' });
-        acc[month] = (acc[month] || 0) + Number(order.amount);
-      }
-      return acc;
-    }, {} as Record<string, number>) || {};
-
-    return Object.entries(monthlyData).map(([name, amount]) => ({
-      name,
-      amount,
-    }));
-  } catch (error) {
-    console.error('Error getting monthly stats:', error);
-    throw new Error('Failed to fetch monthly stats');
-  }
-}
-
-export async function getCustomerDistribution(userId: string, isVendor: boolean) {
-  const { data: orders, error } = await supabase
-    .from('orders')
-    .select('customer_name')
-    .eq(isVendor ? 'vendor_id' : 'supplier_id', userId);
-
-  if (error) {
-    throw new Error('Failed to fetch customer distribution');
-  }
-
-  const customerCounts = orders?.reduce((acc, order) => {
-    acc[order.customer_name] = (acc[order.customer_name] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>) || {};
-
-  return Object.entries(customerCounts).map(([name, value]) => ({
-    name,
-    value,
-  }));
-}
-
-export async function getSupplierProducts(supplierId: string) {
+  
   const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('supplier_id', supplierId);
-
+    .from('suppliers')
+    .select('id')
+    .eq('id', user.id)
+    .single();
+  
   if (error) {
-    throw new Error('Failed to fetch supplier products');
+    throw error;
+  }
+  
+  return data?.id || '';
+};
+
+// Get supplier payments (received or made)
+export const getSupplierPayments = async (
+  supplierId: string, 
+  type: 'received' | 'made'
+) => {
+  if (!supplierId) {
+    return [];
   }
 
-  return data || [];
-}
-
-export async function getSupplierOrders(supplierId: string) {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('*')
-    .eq('supplier_id', supplierId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    throw new Error('Failed to fetch supplier orders');
-  }
-
-  return data || [];
-}
-
-export async function getSupplierCustomers(supplierId: string) {
-  const { data, error } = await supabase
-    .from('customers')
-    .select('*')
-    .eq('supplier_id', supplierId);
-
-  if (error) {
-    throw new Error('Failed to fetch supplier customers');
-  }
-
-  return data || [];
-}
-
-export async function getSupplierPayments(supplierId: string, paymentType?: string) {
-  let query = supabase
+  const query = supabase
     .from('payments')
-    .select('*')
-    .eq('supplier_id', supplierId);
+    .select('*');
 
-  if (paymentType) {
-    query = query.eq('payment_type', paymentType);
+  if (type === 'received') {
+    // Payments received by this supplier
+    query.eq('supplier_id', supplierId)
+         .is('vendor_id', null);
+  } else {
+    // Payments made by this supplier to others
+    query.eq('supplier_id', supplierId)
+         .not('vendor_id', 'is', null);
   }
 
-  const { data, error } = await query.order('payment_date', { ascending: false });
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error('Failed to fetch supplier payments');
+    console.error(`Error fetching ${type} payments:`, error);
+    throw error;
   }
 
   return data || [];
-}
+};
+
+// Other query functions...

@@ -1,5 +1,4 @@
 
-import React from 'react';
 import SupplierSettings from '@/components/dashboard/supplier/SupplierSettings';
 
 const SupplierSettingsPage = () => {

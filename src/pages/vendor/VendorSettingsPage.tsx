@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Settings } from 'lucide-react';
 
@@ -24,4 +24,4 @@ const VendorSettingsPage = () => {
   );
 };
 
-export default VendorSettingsPage; 
+export default VendorSettingsPage;

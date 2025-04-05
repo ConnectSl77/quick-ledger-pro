@@ -1,5 +1,4 @@
 
-import React from 'react';
 import SupplierDashboard from '@/components/dashboard/supplier/SupplierDashboard';
 
 const SupplierDashboardPage = () => {

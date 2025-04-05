@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -239,7 +239,7 @@ const SupplierPayments = () => {
                           <TableRow key={payment.id}>
                             <TableCell className="font-medium">{payment.id.substring(0, 8)}</TableCell>
                             <TableCell>{payment.customer_name || 'N/A'}</TableCell>
-                            <TableCell>{new Date(payment.payment_date || payment.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell>{new Date(payment.payment_date || payment.created_at || '').toLocaleDateString()}</TableCell>
                             <TableCell>{payment.reference || 'N/A'}</TableCell>
                             <TableCell>{getPaymentMethodLabel(payment.method)}</TableCell>
                             <TableCell>SLL {Number(payment.amount).toLocaleString()}</TableCell>
@@ -309,7 +309,7 @@ const SupplierPayments = () => {
                           <TableRow key={payment.id}>
                             <TableCell className="font-medium">{payment.id.substring(0, 8)}</TableCell>
                             <TableCell>{payment.recipient_name || 'N/A'}</TableCell>
-                            <TableCell>{new Date(payment.payment_date || payment.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell>{new Date(payment.payment_date || payment.created_at || '').toLocaleDateString()}</TableCell>
                             <TableCell>{payment.category || 'N/A'}</TableCell>
                             <TableCell>{getPaymentMethodLabel(payment.method)}</TableCell>
                             <TableCell>SLL {Number(payment.amount).toLocaleString()}</TableCell>

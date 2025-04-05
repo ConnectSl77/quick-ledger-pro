@@ -1,10 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Outlet, useParams } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import Sidebar from '@/components/dashboard/Sidebar';
-
-const queryClient = new QueryClient();
 
 const DashboardLayout = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -13,17 +11,25 @@ const DashboardLayout = () => {
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
-  
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="flex h-screen overflow-hidden">
-        <Sidebar collapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} />
-        
-        <div className="flex-1 overflow-y-auto bg-gray-50">
-          <Outlet />
-        </div>
-      </div>
-    </QueryClientProvider>
+    <div className="h-screen flex overflow-hidden bg-gray-50">
+      <Sidebar 
+        collapsed={sidebarCollapsed} 
+        toggleSidebar={toggleSidebar}
+      />
+      
+      <motion.div 
+        className="flex-1 overflow-auto"
+        initial={false}
+        animate={{ 
+          marginLeft: sidebarCollapsed ? 80 : 250
+        }}
+        transition={{ duration: 0.2 }}
+      >
+        <Outlet />
+      </motion.div>
+    </div>
   );
 };
 

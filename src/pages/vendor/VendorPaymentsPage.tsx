@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreditCard } from 'lucide-react';
 
@@ -24,4 +24,4 @@ const VendorPaymentsPage = () => {
   );
 };
 
-export default VendorPaymentsPage; 
+export default VendorPaymentsPage;

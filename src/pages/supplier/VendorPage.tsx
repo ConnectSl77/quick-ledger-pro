@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Search, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -135,4 +136,4 @@ const VendorPage = () => {
   );
 };
 
-export default VendorPage; 
+export default VendorPage;

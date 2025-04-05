@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText } from 'lucide-react';
 
@@ -24,4 +24,4 @@ const VendorInvoicesPage = () => {
   );
 };
 
-export default VendorInvoicesPage; 
+export default VendorInvoicesPage;

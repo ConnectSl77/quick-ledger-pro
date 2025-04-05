@@ -1,5 +1,4 @@
 
-import React from 'react';
 import SupplierOrders from '@/components/dashboard/supplier/SupplierOrders';
 
 const SupplierOrdersPage = () => {

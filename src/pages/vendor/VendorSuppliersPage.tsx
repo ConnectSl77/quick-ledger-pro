@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users } from 'lucide-react';
 
@@ -24,4 +24,4 @@ const VendorSuppliersPage = () => {
   );
 };
 
-export default VendorSuppliersPage; 
+export default VendorSuppliersPage;
