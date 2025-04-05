@@ -1,23 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Send, User } from "lucide-react";
 import { getCurrentSupplierId, getConversations, getMessages, createMessage } from '@/integrations/supabase/queries';
 import { useToast } from '@/hooks/use-toast';
 
 interface MessagePanelProps {
   userType: string;
-}
-
-interface Conversation {
-  conversation_id: string;
-  user_name: string;
-  last_message: string;
-  last_message_time: string;
 }
 
 interface Message {
@@ -38,7 +30,6 @@ const MessagePanel = ({ userType }: MessagePanelProps) => {
   useEffect(() => {
     const fetchCurrentUserId = async () => {
       try {
-        // In a real app, this would come from authentication
         const id = await getCurrentSupplierId();
         setCurrentUserId(id);
       } catch (error) {
@@ -121,6 +112,7 @@ const MessagePanel = ({ userType }: MessagePanelProps) => {
   
   // Format timestamp to readable format
   const formatTime = (timestamp: string) => {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };

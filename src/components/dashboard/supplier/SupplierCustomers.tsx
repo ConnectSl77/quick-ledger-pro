@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -57,7 +56,6 @@ const SupplierCustomers = () => {
   const [supplierId, setSupplierId] = useState<string>('');
   const [filteredCustomers, setFilteredCustomers] = useState<Customer[]>([]);
 
-  // Fetch supplier ID first
   useEffect(() => {
     async function fetchSupplierId() {
       try {
@@ -71,14 +69,12 @@ const SupplierCustomers = () => {
     fetchSupplierId();
   }, []);
 
-  // Only fetch customers once we have the supplier ID
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['supplierCustomers', supplierId],
     queryFn: () => getSupplierCustomers(supplierId),
     enabled: !!supplierId
   });
 
-  // Filter customers based on search query
   useEffect(() => {
     if (customers) {
       setFilteredCustomers(
@@ -92,7 +88,6 @@ const SupplierCustomers = () => {
     }
   }, [customers, searchQuery]);
 
-  // Calculate customer stats
   const activeCustomers = customers.filter(c => c.status === 'active').length;
   const totalSpent = customers.reduce((sum, c) => sum + Number(c.total_spent || 0), 0);
 

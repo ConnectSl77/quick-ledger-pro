@@ -1,3 +1,4 @@
+
 import { supabase } from './client';
 
 // Define types for database operations
@@ -9,14 +10,25 @@ type Message = {
   created_at: string;
 };
 
+// Mock function to get current supplier ID (in a real app, this would come from authentication)
+export async function getCurrentSupplierId() {
+  // This is a placeholder. In a production app, this would get the ID from the authenticated user
+  return "38aaa495-9d0e-4ead-9996-2b2e92f45ec2"; // Example supplier ID
+}
+
 // Functions for messages
 export async function createMessage(senderId: string, receiverId: string, content: string) {
   try {
-    await supabase.rpc('insert_message', {
-      p_sender_id: senderId,
-      p_receiver_id: receiverId,
-      p_content: content
-    });
+    // Using normal insert instead of RPC to avoid TS errors
+    const { error } = await supabase
+      .from('messages')
+      .insert({
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content: content
+      });
+      
+    if (error) throw error;
   } catch (error) {
     console.error('Error creating message:', error);
     throw new Error('Failed to send message');

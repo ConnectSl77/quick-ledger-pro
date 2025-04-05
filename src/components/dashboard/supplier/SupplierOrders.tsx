@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -82,8 +81,8 @@ const SupplierOrders = () => {
     if (orders) {
       setFilteredOrders(
         orders.filter(order => 
-          order.customer_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.status.toLowerCase().includes(searchQuery.toLowerCase())
+          order.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          order.status?.toLowerCase().includes(searchQuery.toLowerCase())
         )
       );
     }
@@ -161,7 +160,9 @@ const SupplierOrders = () => {
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">{order.id.substring(0, 8)}</TableCell>
                         <TableCell>{order.customer_name}</TableCell>
-                        <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
+                        </TableCell>
                         <TableCell>{order.items}</TableCell>
                         <TableCell>SLL {Number(order.amount).toLocaleString()}</TableCell>
                         <TableCell>

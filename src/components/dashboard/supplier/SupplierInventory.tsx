@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,7 +66,6 @@ const SupplierInventory = () => {
   const [supplierId, setSupplierId] = useState<string>('');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
 
-  // Fetch supplier ID first
   useEffect(() => {
     async function fetchSupplierId() {
       try {
@@ -81,19 +79,17 @@ const SupplierInventory = () => {
     fetchSupplierId();
   }, []);
 
-  // Only fetch products once we have the supplier ID
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['supplierProducts', supplierId],
     queryFn: () => getSupplierProducts(supplierId),
     enabled: !!supplierId
   });
 
-  // Filter products based on search query
   useEffect(() => {
     if (products) {
       setFilteredProducts(
         products.filter(product => 
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           product.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           product.status?.toLowerCase().includes(searchQuery.toLowerCase())
         )
@@ -101,7 +97,6 @@ const SupplierInventory = () => {
     }
   }, [products, searchQuery]);
 
-  // Calculate inventory stats
   const lowStockCount = products.filter(p => p.status === 'low_stock').length;
   const outOfStockCount = products.filter(p => p.status === 'out_of_stock').length;
 

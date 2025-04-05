@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import { useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -11,7 +12,6 @@ import {
   Settings,
   LogOut,
   CreditCard,
-  ChevronRight,
   Menu,
   MessageSquare,
 } from 'lucide-react';

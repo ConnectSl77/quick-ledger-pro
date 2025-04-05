@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -11,22 +12,6 @@ import { cn } from '@/lib/utils';
 type Order = Database['public']['Tables']['orders']['Row'] & {
   vendor_name: string;
 };
-
-interface Stats {
-  totalRevenue: number;
-  totalProducts: number;
-  totalOrders: number;
-  recentOrders: Order[];
-}
-
-interface StatsCard {
-  title: string;
-  value: string;
-  change: string;
-  icon: React.ElementType;
-  description: string;
-  color: string;
-}
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -47,6 +32,15 @@ const itemVariants = {
     opacity: 1
   }
 };
+
+interface StatsCard {
+  title: string;
+  value: string;
+  change: string;
+  icon: React.ElementType;
+  description: string;
+  color: string;
+}
 
 const SupplierDashboard = () => {
   const [supplierId, setSupplierId] = useState<string>('');
@@ -261,9 +255,9 @@ const SupplierDashboard = () => {
                       className="border-b hover:bg-muted/30 transition-colors"
                     >
                       <td className="p-4">{order.customer_name}</td>
-                      <td className="p-4 font-medium">SLL {order.amount.toLocaleString()}</td>
+                      <td className="p-4 font-medium">SLL {Number(order.amount).toLocaleString()}</td>
                       <td className="p-4 text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString()}
+                        {order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}
                       </td>
                       <td className="p-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
